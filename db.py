@@ -19,8 +19,8 @@ _arg_key_pairs = [
 
 def _build_connct_arg():
     return {
-        arg: DATABASE_INFO[key] 
-        for arg, key in _arg_key_pairs 
+        arg: DATABASE_INFO[key]
+        for arg, key in _arg_key_pairs
         if DATABASE_INFO[key]
     }
 
