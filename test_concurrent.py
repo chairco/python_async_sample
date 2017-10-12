@@ -1,5 +1,6 @@
-
 import time
+
+from concurrent import futures
 
 try:
     from . import db
@@ -14,7 +15,6 @@ glass_id = [i.rstrip() for i in glass_id]
 
 
 MAX_WORKER = 200
-ret = []
 
 
 def query(glass_id):
@@ -36,8 +36,7 @@ def query_many(glass_id):
     workers = min(MAX_WORKER, len(glass_id))
     with futures.ThreadPoolExecutor(workers) as execute:
         res = execute.map(query, sorted(glass_id))
-    ret.append(res)
-    return len(list(res))
+    return res
 
 
 def query_many2(glass_id)
