@@ -1,3 +1,7 @@
+import time
+
+from concurrent import futures
+
 try:
     from . import db
 except Exception as e:
@@ -7,51 +11,110 @@ except Exception as e:
 __all__ = ['get_edc_glass_history']
 
 
-class FDC:
-    """glass shop flow database
-
-    Here is get db glass_id factory flow
-    """
-
+class GlassDoesNotExist(ValueError):
     def __init__(self, *, glass_id):
-        self.glass_id = glass_id
+        super().__init__(f'(type={glass_id!r})')
 
-    def get_edc_glass_history(self):
-        """From array_pds table
-        rtype: list
-        """
-        cursor = db.get_cursor()
-        cursor.execute(
-            """
-                SELECT * from lcdsys.array_pds_glass_t t WHERE 1=1
-                AND t.glass_id = :glass_id
-                ORDER BY glass_start_time
-                """,
-            {'glass_id': self.glass_id}
-        )
-        rows = cursor.fetchall()
-        return rows
 
-    def get_edc_data(self):
+def get_edc_glass_history(*, glass_id):
+    """From array_pds_glass_t table
+    type glass_id: list()
+    rtype: row(step_id, glass_id, start_time, sub_equip, product_id)
+    """
+    cursor = db.get_cursor()
+    cursor.execute(
         """
-        rtype
-        """
-        pass
+        SELECT * 
+        FROM lcdsys.array_pds_glass_t t
+        WHERE 1=1 AND t.glass_id = :glass_id
+        ORDER BY glass_start_time
+        """,
+        {'glass_id': glass_id}
+    )
+    rows = cursor.fetchall()
+    if rows is None:
+        raise GlassDoesNotExist(glass_id=glass_id)
+    return rows
 
-    def get_teg_glass_history(self):
-        """
-        rtype
-        """
-        pass
 
-    def get_teg_summary_data(self):
+def get_edc_data(*, glass_id, step_id, start_time):
+    """
+    rtype
+    """
+    cursor = db.get_cursor()
+    cursor.execute(
         """
-        rtype
-        """
-        pass
+        SELECT *
+        FROM lcdsys.array_pds_glass_summary_v t
+        WHERE 1=1 
+        AND t.GLASS_ID = :glass_id
+        AND t.STEP_ID = :step_id
+        AND t.GLASS_START_TIME = :start_time
+        """,
+        {
+        'glass_id': glass_id,
+        'step_id': step_id,
+        'start_time': start_time
+        }
+    )
+    rows = cursor.fetchall()
+    return rows
 
-    def get_teg_raw_data(self):
+
+def get_teg_glass_history(*, glass_id):
+    """
+    rtype
+    """
+    cursor = db.get_cursor()
+    cursor.execute(
         """
-        rtype
+        SELECT *
+        FROM lcdsys.array_glass_v t
+        WHERE 1=1
+        AND glass_id = :glass_id
+        ORDER BY glass_Start_time ASC
+        """,
+        {'glass_id'; glass_id}
+    )
+    rows = cursor.fetchall()
+    return rows
+
+
+def get_teg_summary_data(*, glass_id, step_id):
+    """
+    rtype
+    """
+    cursor = db.get_cursor()
+    cursor.execute(
         """
-        pass
+        SELECT *
+        FROM lcdsys.array_result_v t
+        WHERE 1=1
+        AND glass_id = :glass_id
+        AND step_id = :step_id
+        """,
+        {'glass_id': glass_id, 'step_id': step_id}
+    )
+    rows = cursor.fetchall()
+    return rows
+
+
+def get_teg_raw_data(*, glass_id, step_id):
+    """
+    rtype
+    """
+    cursor = db.get_cursor()
+    cursor.execute(
+        """
+        SELECT *
+        FROM lcdsys.array_glass_summary_v t
+        WHERE 1=1
+        AND glass_id = :glass_id
+        AND step_id = :step_id
+        """
+    )
+    rows = cursor.fetchall()
+    return rows
+
+
+
