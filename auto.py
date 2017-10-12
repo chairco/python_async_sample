@@ -80,25 +80,6 @@ def get_teg_glass_history(*, glass_id):
     return rows
 
 
-def get_teg_summary_data(*, glass_id, step_id):
-    """
-    rtype
-    """
-    cursor = db.get_cursor()
-    cursor.execute(
-        """
-        SELECT *
-        FROM lcdsys.array_result_v t
-        WHERE 1=1
-        AND glass_id = :glass_id
-        AND step_id = :step_id
-        """,
-        {'glass_id': glass_id, 'step_id': step_id}
-    )
-    rows = cursor.fetchall()
-    return rows
-
-
 def get_teg_raw_data(*, glass_id, step_id):
     """
     rtype
@@ -117,4 +98,25 @@ def get_teg_raw_data(*, glass_id, step_id):
     return rows
 
 
-
+def get_teg_summary_data(*, glass_id, step_id, param_name):
+    """
+    rtype
+    """
+    cursor = db.get_cursor()
+    cursor.execute(
+        """
+        SELECT *
+        FROM lcdsys.array_result_v t
+        WHERE 1=1
+        AND glass_id = :glass_id
+        AND step_id = :step_id
+        AND param_name = :param_name
+        """,
+        {
+        'glass_id': glass_id, 
+        'step_id': step_id,
+        'param_name': param_name
+        }
+    )
+    rows = cursor.fetchall()
+    return rows
