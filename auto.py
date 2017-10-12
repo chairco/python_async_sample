@@ -12,6 +12,7 @@ __all__ = ['get_edc_glass_history']
 
 
 class GlassDoesNotExist(ValueError):
+
     def __init__(self, *, glass_id):
         super().__init__(f'(type={glass_id!r})')
 
@@ -52,9 +53,9 @@ def get_edc_data(*, glass_id, step_id, start_time):
         AND t.GLASS_START_TIME = :start_time
         """,
         {
-        'glass_id': glass_id,
-        'step_id': step_id,
-        'start_time': start_time
+            'glass_id': glass_id,
+            'step_id': step_id,
+            'start_time': start_time
         }
     )
     rows = cursor.fetchall()
@@ -74,7 +75,8 @@ def get_teg_glass_history(*, glass_id):
         AND glass_id = :glass_id
         ORDER BY glass_Start_time ASC
         """,
-        {'glass_id'; glass_id}
+        {'glass_id'
+         glass_id}
     )
     rows = cursor.fetchall()
     return rows
@@ -113,9 +115,9 @@ def get_teg_summary_data(*, glass_id, step_id, param_name):
         AND param_name = :param_name
         """,
         {
-        'glass_id': glass_id, 
-        'step_id': step_id,
-        'param_name': param_name
+            'glass_id': glass_id,
+            'step_id': step_id,
+            'param_name': param_name
         }
     )
     rows = cursor.fetchall()
