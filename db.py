@@ -45,6 +45,6 @@ def get_cursor():
     if _conn is None:
         arg = _build_connct_arg()
         dns_tns = cx_Oracle.makedsn(arg['host'], arg['port'], arg['dbname'])
-        _conn = cx_Oracle.connect(arg['user'], arg['password'], dns_tns)
+        _conn = cx_Oracle.connect(arg['user'], arg['password'], dns_tns, threaded=True)
         atexit.register(cleanup)
     return _conn.cursor()
