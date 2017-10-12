@@ -55,15 +55,33 @@ def query_many(glass_id):
             #print(msg.format(future, res))
             result.append(res)
 
-    return len(result)
+    return result
+
+
+def average():
+    """caculate on here
+    """
+    pass
+
+
+def grouper(result, key):
+    while True:
+        retults[key] = yield from average()
 
 
 def main(query_many):
     t0 = time.time()
-    count = query_many(glass_id)
+    ret = query_many(glass_id)
     elapsed = time.time() - t0
+    result = {}
+    for idx, values in enumerate(ret):
+        group = grouper(result, idx)
+        next(group)
+        for value in values:
+            group.send(value)
+        group.send(None)
     msg = '\n{} glass_id query in {:.2f}s'
-    print(msg.format(count, elapsed))
+    print(msg.format(idx + 1, elapsed))
 
 
 if __name__ == '__main__':
