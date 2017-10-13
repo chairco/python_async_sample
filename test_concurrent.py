@@ -4,8 +4,10 @@ from concurrent import futures
 
 try:
     from . import db
+    from . import auto
 except Exception as e:
     import db
+    import auto
 
 
 with open('sample.csv', 'r') as fp:
@@ -17,44 +19,29 @@ glass_id = [i.rstrip() for i in glass_id]
 MAX_WORKER = 200
 
 
-def query(glass_id):
-    cursor = db.get_cursor()
-    cursor.execute(
-        """
-        SELECT * 
-        FROM lcdsys.array_pds_glass_t t
-        WHERE 1=1 AND t.glass_id = :glass_id
-        ORDER BY glass_start_time
-        """,
-        {'glass_id': glass_id}
-    )
-    rows = cursor.fetchall()
-    return rows
-
-
-def query_many2(glass_id):
+def query_many_map(query, glass_id):
     workers = min(MAX_WORKER, len(glass_id))
     with futures.ThreadPoolExecutor(workers) as execute:
         res = execute.map(query, sorted(glass_id))
     return res
 
 
-def query_many(glass_id):
-    with futures.ThreadPoolExecutor(max_workers=MAX_WORKER) as executor:
-        to_do = []
-        for g_id in sorted(glass_id):
-            future = executor.submit(query, g_id)
-            to_do.append(future)
-            msg = 'Scheduled for {}: {}'
-            #print(msg.format(g_id, future))
-
-        result = []
-        for future in futures.as_completed(to_do):
-            res = future.result()
-            msg = '{} result: {!r}'
-            #print(msg.format(future, res))
-            result.append(res)
-
+def query_many(query, glass_id):
+    workers = min(MAX_WORKER, len(glass_id))
+    with futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        
+        future_to_gid = {executor.submit(query, g_id): g_id for g_id in sorted(glass_id)} 
+        
+        result = {}
+        for future in futures.as_completed(future_to_gid):
+            g_id = future_to_gid[future]
+            try:
+                data = future.result()
+            except Exception as exc:
+                print('%r generated an exception: %s' % (g_id, exc))
+            else:
+                print('%r glass_id has %d rows' % (g_id, len(data)))
+            result.setdefault(g_id, data)
     return result
 
 
@@ -66,23 +53,29 @@ def average():
 
 def grouper(result, key):
     while True:
-        retults[key] = yield from average()
+        result[key] = yield from average()
 
 
-def main(query_many):
+def chain(*iterables):
+    for it in iterables:
+        yield from it
+
+
+def main(query, query_many):
+    data = {}
+    results = {}
+    
     t0 = time.time()
-    ret = query_many(glass_id)
+    ret = query_many(query, glass_id)
     elapsed = time.time() - t0
-    result = {}
-    for idx, values in enumerate(ret):
-        group = grouper(result, idx)
-        next(group)
-        for value in values:
-            group.send(value)
-        group.send(None)
+
+    for key, values in ret.items():
+        print('{}: \n{}'.format(key, list(chain(values))))
+
     msg = '\n{} glass_id query in {:.2f}s'
-    print(msg.format(idx + 1, elapsed))
+    print(msg.format(len(ret), elapsed))
 
 
 if __name__ == '__main__':
-    main(query_many)
+    main(auto.get_edc_glass_history, query_many)
+
