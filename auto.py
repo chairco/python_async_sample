@@ -8,7 +8,11 @@ except Exception as e:
     import db
 
 
-__all__ = ['get_edc_glass_history']
+__all__ = [
+            'get_edc_glass_history', 'get_edc_data',
+            'get_teg_glass_history', 'get_teg_raw_data',
+            'get_teg_summary_data'
+        ]
 
 
 class GlassDoesNotExist(ValueError):
@@ -17,7 +21,7 @@ class GlassDoesNotExist(ValueError):
         super().__init__(f'(type={glass_id!r})')
 
 
-def get_edc_glass_history(*, glass_id):
+def get_edc_glass_history(glass_id):
     """From array_pds_glass_t table
     type glass_id: list()
     rtype: row(step_id, glass_id, start_time, sub_equip, product_id)
@@ -25,7 +29,7 @@ def get_edc_glass_history(*, glass_id):
     cursor = db.get_cursor()
     cursor.execute(
         """
-        SELECT * 
+        SELECT "STEP_ID", "GLASS_START_TIME" 
         FROM lcdsys.array_pds_glass_t t
         WHERE 1=1 AND t.glass_id = :glass_id
         ORDER BY glass_start_time
@@ -38,9 +42,9 @@ def get_edc_glass_history(*, glass_id):
     return rows
 
 
-def get_edc_data(*, glass_id, step_id, start_time):
+def get_edc_data(glass_id, step_id, start_time):
     """
-    rtype
+    :rtype
     """
     cursor = db.get_cursor()
     cursor.execute(
@@ -62,7 +66,7 @@ def get_edc_data(*, glass_id, step_id, start_time):
     return rows
 
 
-def get_teg_glass_history(*, glass_id):
+def get_teg_glass_history(glass_id):
     """
     rtype
     """
@@ -75,14 +79,13 @@ def get_teg_glass_history(*, glass_id):
         AND glass_id = :glass_id
         ORDER BY glass_Start_time ASC
         """,
-        {'glass_id'
-         glass_id}
+        {'glass_id': glass_id}
     )
     rows = cursor.fetchall()
     return rows
 
 
-def get_teg_raw_data(*, glass_id, step_id):
+def get_teg_raw_data(glass_id, step_id):
     """
     rtype
     """
@@ -100,7 +103,7 @@ def get_teg_raw_data(*, glass_id, step_id):
     return rows
 
 
-def get_teg_summary_data(*, glass_id, step_id, param_name):
+def get_teg_summary_data(glass_id, step_id, param_name):
     """
     rtype
     """
