@@ -29,7 +29,7 @@ def get_edc_glass_history(glass_id):
     cursor = db.get_cursor()
     cursor.execute(
         """
-        SELECT "STEP_ID", "GLASS_START_TIME" 
+        SELECT "GLASS_ID", "STEP_ID", "GLASS_START_TIME" 
         FROM lcdsys.array_pds_glass_t t
         WHERE 1=1 AND t.glass_id = :glass_id
         ORDER BY glass_start_time

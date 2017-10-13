@@ -2,12 +2,16 @@ import time
 
 from concurrent import futures
 
+from collections import namedtuple
+
 try:
     from . import db
     from . import auto
 except Exception as e:
     import db
     import auto
+
+Result = namedtuple('Result', 'data')
 
 
 with open('sample.csv', 'r') as fp:
@@ -29,7 +33,6 @@ def query_many_map(query, glass_id):
 def query_many(query, glass_id):
     workers = min(MAX_WORKER, len(glass_id))
     with futures.ThreadPoolExecutor(max_workers=workers) as executor:
-        
         future_to_gid = {executor.submit(query, g_id): g_id for g_id in sorted(glass_id)} 
         
         result = {}
@@ -45,15 +48,39 @@ def query_many(query, glass_id):
     return result
 
 
-def average():
+def query_edc_data_many(query, data):
+    workers = min(MAX_WORKER, len(data))
+    with futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        to_do = []
+        future = executor.submit(query, data[0], data[1], data[2])
+        to_do.append(future)
+        msg = 'Scheduled for {}: {}'
+        #print(msg.format(g_id, future))
+
+        result = []
+        for future in futures.as_completed(to_do):
+            res = future.result()
+            msg = '{} result: {!r}'
+            #print(msg.format(future, res))
+            result.append(res)
+
+    return result
+
+
+def edc_data():
     """caculate on here
     """
-    pass
+    while True:
+        term = yield
+        if term is None:
+            break
+        result = query_edc_data_many(auto.get_edc_data, term)
+    return Result(result)
 
 
 def grouper(result, key):
     while True:
-        result[key] = yield from average()
+        result[key] = yield from edc_data()
 
 
 def chain(*iterables):
@@ -62,7 +89,6 @@ def chain(*iterables):
 
 
 def main(query, query_many):
-    data = {}
     results = {}
     
     t0 = time.time()
@@ -70,10 +96,21 @@ def main(query, query_many):
     elapsed = time.time() - t0
 
     for key, values in ret.items():
-        print('{}: \n{}'.format(key, list(chain(values))))
+        #print('{}: \n{}'.format(key, list(chain(values))))
+        group = grouper(results, key)
+        next(group)
+        for value in values:
+            group.send(value)
+        group.send(None)
+
+    elapsed_edc = time.time() - t0
+    #print(results)
 
     msg = '\n{} glass_id query in {:.2f}s'
     print(msg.format(len(ret), elapsed))
+
+    msg = '\n{} glass_id_dec_step_id query in {:.2f}s'
+    print(msg.format(len(results), elapsed_edc))
 
 
 if __name__ == '__main__':
