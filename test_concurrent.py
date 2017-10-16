@@ -89,7 +89,7 @@ def _query_edc_data_many(query, data):
     return result
 
 
-def query_edc_data_many(query, datas):
+def query_edc_data_many(query, datas, result=None):
     """
     Query oracle db by mutipleprocess
     :type query: query object
@@ -208,6 +208,9 @@ def main(query, query_many):
     print(msg.format(key, len(result), time.time() - t1))
 
     results = {}
+    
+    manager = multiprocessing.Manager()
+    result = manager.dict()
     record = []
     lock = multiprocessing.Lock()
 
@@ -226,7 +229,7 @@ def main(query, query_many):
         # mutiProcess
         process = multiprocessing.Process(
             target=query_edc_data_many,
-            args=(auto.get_edc_data,values)
+            args=(auto.get_edc_data, values, result)
         )
         process.start()
         record.append(process)
@@ -243,6 +246,7 @@ def main(query, query_many):
     for process in record:
         process.join()
 
+    print(result.values())
 
     elapsed_edc = time.time() - t0
     msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
