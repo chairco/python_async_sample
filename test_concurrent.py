@@ -32,6 +32,9 @@ MAX_WORKER = 200
 
 
 def query_many_map(query, glass_id):
+    """
+    test mutipthread query with .map 
+    """
     workers = min(MAX_WORKER, len(glass_id))
     with futures.ThreadPoolExecutor(workers) as execute:
         res = execute.map(query, sorted(glass_id))
@@ -39,6 +42,12 @@ def query_many_map(query, glass_id):
 
 
 def query_many(query, glass_id):
+    """
+    Query oracle db by mutiplethread
+    :type query: query object
+    :type glass_id: list
+    :rtype dict()  
+    """
     workers = min(MAX_WORKER, len(glass_id))
     with futures.ThreadPoolExecutor(max_workers=workers) as executor:
         future_to_gid = {executor.submit(query, g_id): g_id for g_id in sorted(glass_id)} 
@@ -56,6 +65,12 @@ def query_many(query, glass_id):
 
 
 def _query_edc_data_many(query, data):
+    """
+    Query oracle db by mutiplethread, performace not good
+    :type query: query object
+    :type datas: list
+    :rtype dict()  
+    """
     workers = min(MAX_WORKER, len(data))
     with futures.ThreadPoolExecutor(max_workers=workers) as executor:
         to_do = []
@@ -75,6 +90,12 @@ def _query_edc_data_many(query, data):
 
 
 def query_edc_data_many(query, datas):
+    """
+    Query oracle db by mutipleprocess
+    :type query: query object
+    :type datas: list
+    :rtype dict()  
+    """
     with futures.ProcessPoolExecutor() as executor:
         future_to_sid = {
             executor.submit(
@@ -96,6 +117,7 @@ def query_edc_data_many(query, datas):
 
 def edc_data():
     """caculate on here
+    this is for yield from
     """
     while True:
         term = yield
@@ -106,28 +128,35 @@ def edc_data():
 
 
 def grouper(result, key):
+    """
+    proxy just for test yield from
+    """
     while True:
         result[key] = yield from edc_data()
 
 
 def chain(*iterables):
+    """
+    Just test yield
+    """
     for it in iterables:
         yield from it
 
 
 def report(g_id, datas):
+    """
+    This output csv file under root/output/
+    :type g_id: str
+    :type datas: dict()
+    """
     path = os.path.join(BASE_DIR, g_id + '.csv')
     with open(path, 'w') as fp:
         for key, values in datas.items():
             for value in values:
                 value = list(map(str, value))
-                #value = list(value)
                 for i in range(len(value)):
                     if isinstance(value[i], datetime):
                         value[i] = (value[i].strftime('%Y/%m/%d %H:%M:%S'))
-                    if value[i] is None:
-                        value[i] = "" 
-                #value = list(map(str, value))
                 fp.write(', '.join(value))
                 fp.write('\n')
 
@@ -164,6 +193,7 @@ def main(query, query_many):
     msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
     print(msg.format(len(results), elapsed_edc))
     
+    # output csv files
     for key, values in results.items():
         report(g_id=key, datas=values)
 
