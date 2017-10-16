@@ -1,5 +1,7 @@
 import time
 
+import multiprocessing
+
 from concurrent import futures
 
 from collections import namedtuple
@@ -34,7 +36,6 @@ def query_many(query, glass_id):
     workers = min(MAX_WORKER, len(glass_id))
     with futures.ThreadPoolExecutor(max_workers=workers) as executor:
         future_to_gid = {executor.submit(query, g_id): g_id for g_id in sorted(glass_id)} 
-        
         result = {}
         for future in futures.as_completed(future_to_gid):
             g_id = future_to_gid[future]
@@ -48,13 +49,13 @@ def query_many(query, glass_id):
     return result
 
 
-def query_edc_data_many(query, data):
+def _query_edc_data_many(query, data):
     workers = min(MAX_WORKER, len(data))
     with futures.ThreadPoolExecutor(max_workers=workers) as executor:
         to_do = []
         future = executor.submit(query, data[0], data[1], data[2])
         to_do.append(future)
-        msg = 'Scheduled for {}: {}'
+        #msg = 'Scheduled for {}: {}'
         #print(msg.format(g_id, future))
 
         result = []
@@ -67,6 +68,27 @@ def query_edc_data_many(query, data):
     return result
 
 
+def query_edc_data_many(query, datas):
+    workers = min(MAX_WORKER, len(datas))
+    with futures.ProcessPoolExecutor() as executor:
+    #with futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        future_to_sid = {
+            executor.submit(
+            query, value[0], value[1], value[2]): value[1] for value in datas
+        }
+        result = {}
+        for future in futures.as_completed(future_to_sid):
+            s_id = future_to_sid[future]
+            try:
+                data = future.result()
+            except Exception as exc:
+                print('%r generated an exception: %s' % (s_id, exc))
+            else:
+                print('%r step_id has %d rows' % (s_id, len(data)))
+            result.setdefault(s_id, data)
+    return result
+
+
 def edc_data():
     """caculate on here
     """
@@ -74,7 +96,7 @@ def edc_data():
         term = yield
         if term is None:
             break
-        result = query_edc_data_many(auto.get_edc_data, term)
+        result = auto.get_edc_data(term[0], term[1], term[2])
     return Result(result)
 
 
@@ -88,29 +110,52 @@ def chain(*iterables):
         yield from it
 
 
-def main(query, query_many):
-    results = {}
-    
+def main(query, query_many):    
     t0 = time.time()
     ret = query_many(query, glass_id)
     elapsed = time.time() - t0
 
+    t0 = time.time()
+    results = {}
     for key, values in ret.items():
+        t1 = time.time()
         #print('{}: \n{}'.format(key, list(chain(values))))
-        group = grouper(results, key)
-        next(group)
+        msg = '\n{} each glass_id_dec_step_id query in {:.2f}s'
+
+        # Query by thread 7s
+        result = query_edc_data_many(auto.get_edc_data, values)
+        results.setdefault(key, result)
+        print(msg.format(len(result), time.time() - t1))
+
+        # yield from 
+        #group = grouper(results, key)
+        #next(group)
+        #for value in values:
+        #    print('send value: {}'.format(value))
+        #    group.send(value)
+        #group.send(None)
+        #print(msg.format(len(results), time.time() - t1))
+        
+        # multiprocess
+        '''
+        record = []
+        lock = multiprocessing.Lock()
         for value in values:
-            group.send(value)
-        group.send(None)
+            process = multiprocessing.Process(target=auto.get_edc_data, args=(value[0], value[1], value[2]))
+            process.start()
+            record.append(process)
+
+        for process in record:
+            process.join()
+            print(process)
+        '''
 
     elapsed_edc = time.time() - t0
-    #print(results)
+    msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
+    print(msg.format(len(results), elapsed_edc))
 
     msg = '\n{} glass_id query in {:.2f}s'
     print(msg.format(len(ret), elapsed))
-
-    msg = '\n{} glass_id_dec_step_id query in {:.2f}s'
-    print(msg.format(len(results), elapsed_edc))
 
 
 if __name__ == '__main__':
