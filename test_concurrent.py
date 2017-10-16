@@ -1,6 +1,11 @@
+# -*- coding:utf-8 -*-
 import time
 
 import multiprocessing
+
+import os
+
+from datetime import datetime
 
 from concurrent import futures
 
@@ -21,6 +26,7 @@ with open('sample.csv', 'r') as fp:
 
 glass_id = [i.rstrip() for i in glass_id]
 
+BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
 
 MAX_WORKER = 200
 
@@ -69,9 +75,7 @@ def _query_edc_data_many(query, data):
 
 
 def query_edc_data_many(query, datas):
-    workers = min(MAX_WORKER, len(datas))
     with futures.ProcessPoolExecutor() as executor:
-    #with futures.ThreadPoolExecutor(max_workers=workers) as executor:
         future_to_sid = {
             executor.submit(
             query, value[0], value[1], value[2]): value[1] for value in datas
@@ -84,7 +88,8 @@ def query_edc_data_many(query, datas):
             except Exception as exc:
                 print('%r generated an exception: %s' % (s_id, exc))
             else:
-                print('%r step_id has %d rows' % (s_id, len(data)))
+                #print('%r step_id has %d rows' % (s_id, len(data)))
+                pass
             result.setdefault(s_id, data)
     return result
 
@@ -110,10 +115,29 @@ def chain(*iterables):
         yield from it
 
 
+def report(g_id, datas):
+    path = os.path.join(BASE_DIR, g_id + '.csv')
+    with open(path, 'w') as fp:
+        for key, values in datas.items():
+            for value in values:
+                value = list(map(str, value))
+                #value = list(value)
+                for i in range(len(value)):
+                    if isinstance(value[i], datetime):
+                        value[i] = (value[i].strftime('%Y/%m/%d %H:%M:%S'))
+                    if value[i] is None:
+                        value[i] = "" 
+                #value = list(map(str, value))
+                fp.write(', '.join(value))
+                fp.write('\n')
+
+
 def main(query, query_many):    
     t0 = time.time()
     ret = query_many(query, glass_id)
     elapsed = time.time() - t0
+    msg = '\n{} glass_id query in {:.2f}s'
+    print(msg.format(len(ret), elapsed))
 
     t0 = time.time()
     results = {}
@@ -122,7 +146,7 @@ def main(query, query_many):
         #print('{}: \n{}'.format(key, list(chain(values))))
         msg = '\n{} each glass_id_dec_step_id query in {:.2f}s'
 
-        # Query by thread 7s
+        # Query by thread 7s BUT process 2~3s
         result = query_edc_data_many(auto.get_edc_data, values)
         results.setdefault(key, result)
         print(msg.format(len(result), time.time() - t1))
@@ -135,27 +159,13 @@ def main(query, query_many):
         #    group.send(value)
         #group.send(None)
         #print(msg.format(len(results), time.time() - t1))
-        
-        # multiprocess
-        '''
-        record = []
-        lock = multiprocessing.Lock()
-        for value in values:
-            process = multiprocessing.Process(target=auto.get_edc_data, args=(value[0], value[1], value[2]))
-            process.start()
-            record.append(process)
-
-        for process in record:
-            process.join()
-            print(process)
-        '''
 
     elapsed_edc = time.time() - t0
     msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
     print(msg.format(len(results), elapsed_edc))
-
-    msg = '\n{} glass_id query in {:.2f}s'
-    print(msg.format(len(ret), elapsed))
+    
+    for key, values in results.items():
+        report(g_id=key, datas=values)
 
 
 if __name__ == '__main__':
