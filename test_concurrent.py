@@ -161,7 +161,10 @@ def report(g_id, datas):
                 fp.write('\n')
 
 
-def main(query, query_many):    
+def main(query, query_many):
+    multiprocessing.freeze_support()
+    pool = multiprocessing.Pool()
+    
     t0 = time.time()
     ret = query_many(query, glass_id)
     elapsed = time.time() - t0
@@ -170,15 +173,29 @@ def main(query, query_many):
 
     t0 = time.time()
     results = {}
+    
+    record = []
+    lock = multiprocessing.Lock()
+
     for key, values in ret.items():
         t1 = time.time()
         #print('{}: \n{}'.format(key, list(chain(values))))
-        msg = '\n{} each glass_id_dec_step_id query in {:.2f}s'
-
+        msg = '\n{}, {} each glass_id_dec_step_id query in {:.2f}s'
+        
+        '''
         # Query by thread 7s BUT process 2~3s
         result = query_edc_data_many(auto.get_edc_data, values)
         results.setdefault(key, result)
-        print(msg.format(len(result), time.time() - t1))
+        print(msg.format(key, len(result), time.time() - t1))
+        '''
+
+        # mutiProcess
+        process = multiprocessing.Process(
+            target=query_edc_data_many,
+            args=(auto.get_edc_data,values)
+        )
+        process.start()
+        record.append(process)
 
         # yield from 
         #group = grouper(results, key)
@@ -189,13 +206,17 @@ def main(query, query_many):
         #group.send(None)
         #print(msg.format(len(results), time.time() - t1))
 
+    for process in record:
+        process.join()
+
+
     elapsed_edc = time.time() - t0
     msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
     print(msg.format(len(results), elapsed_edc))
     
     # output csv files
-    for key, values in results.items():
-        report(g_id=key, datas=values)
+    #for key, values in results.items():
+    #    report(g_id=key, datas=values)
 
 
 if __name__ == '__main__':
