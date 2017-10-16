@@ -96,22 +96,25 @@ def query_edc_data_many(query, datas):
     :type datas: list
     :rtype dict()  
     """
+    result = {}
     with futures.ProcessPoolExecutor() as executor:
-        future_to_sid = {
-            executor.submit(
-            query, value[0], value[1], value[2]): value[1] for value in datas
-        }
-        result = {}
-        for future in futures.as_completed(future_to_sid):
-            s_id = future_to_sid[future]
-            try:
-                data = future.result()
-            except Exception as exc:
-                print('%r generated an exception: %s' % (s_id, exc))
-            else:
-                #print('%r step_id has %d rows' % (s_id, len(data)))
-                pass
-            result.setdefault(s_id, data)
+        for key, values in datas.items():
+            future_to_sid = {
+                executor.submit(
+                query, value[0], value[1], value[2]): value[1] for value in values
+            }
+            res = {}
+            for future in futures.as_completed(future_to_sid):
+                s_id = future_to_sid[future]
+                try:
+                    data = future.result()
+                except Exception as exc:
+                    print('%r generated an exception: %s' % (s_id, exc))
+                else:
+                    #print('%r step_id has %d rows' % (s_id, len(data)))
+                    pass
+                res.setdefault(s_id, data)
+            result.setdefault(key, res)
     return result
 
 
@@ -172,23 +175,26 @@ def main(query, query_many):
     print(msg.format(len(ret), elapsed))
 
     t0 = time.time()
-    results = {}
+    #results = {}
     
+    # Query by thread 7s BUT process 2~3s
+    results = query_edc_data_many(auto.get_edc_data, ret)
+    #results.setdefault(key, result)
+    print(msg.format(key, len(result), time.time() - t1))
+
+    '''
     record = []
     lock = multiprocessing.Lock()
-
     for key, values in ret.items():
         t1 = time.time()
         #print('{}: \n{}'.format(key, list(chain(values))))
         msg = '\n{}, {} each glass_id_dec_step_id query in {:.2f}s'
         
-        '''
         # Query by thread 7s BUT process 2~3s
-        result = query_edc_data_many(auto.get_edc_data, values)
-        results.setdefault(key, result)
-        print(msg.format(key, len(result), time.time() - t1))
-        '''
-
+        #result = query_edc_data_many(auto.get_edc_data, values)
+        #results.setdefault(key, result)
+        #print(msg.format(key, len(result), time.time() - t1))
+        
         # mutiProcess
         process = multiprocessing.Process(
             target=query_edc_data_many,
@@ -208,7 +214,7 @@ def main(query, query_many):
 
     for process in record:
         process.join()
-
+    '''
 
     elapsed_edc = time.time() - t0
     msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
