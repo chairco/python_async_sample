@@ -21,13 +21,9 @@ MAX_WORKER = 200
 
 class Queryedc:
     """
-    Here is API for query oracle db whith high level multiprocess. 
+    Here is API for query oracle db with high level multiprocess. 
     :types query: auto.query object
     """
-
-    def __init__(self):
-        pass
-
     def _query_histroy_concurrency(self, query, glass_id):
         """
         Query oracle db by mutiplethread
@@ -89,17 +85,17 @@ class Queryedc:
         return self._query_data_concurrency(auto.get_edc_data, values)
 
 
-if __name__ == '__main__':
-    with open('sample.csv', 'r') as fp:
-        glass_id = fp.readlines()
-    glass_id = [i.rstrip() for i in glass_id]
+class Queryteg:
+    """
+    Here is API for query oracle db with high level multprocess.
+    """
+    def _query_history_concurrency(self):
+        pass
 
-    t0 = time.time()
+    def _query_rawdata_concurrency(self):
+        pass
 
-    q = Queryedc()
-    # q.glass_history(glass_id)
-    results = q.glass_data(glass_id)
+    def _query_summary_concurrency(self):
+        pass
 
-    elapsed_edc = time.time() - t0
-    msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
-    print(msg.format(len(results), elapsed_edc))
+
