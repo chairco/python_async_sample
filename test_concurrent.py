@@ -214,6 +214,23 @@ def report(g_id, datas):
                 fp.write('\n')
 
 
+def report_for_multi(results_dict):
+    # output csv files. using a+
+    print('start write csv file.')
+    for key, values in results_dict.items():
+        g_id, sid = key.split('_')
+        path = os.path.join(BASE_DIR, g_id + '.csv')
+        with open(path, 'a+') as fp:
+            for value in values:
+                value = list(map(str, value))
+                for i in range(len(value)):
+                    if isinstance(value[i], datetime):
+                        value[i] = (value[i].strftime('%Y/%m/%d %H:%M:%S'))
+                fp.write(', '.join(value))
+                fp.write('\n')
+    print('write csv file done.')
+
+
 def main(query, query_many):
     t0 = time.time()
     ret = query_many(query, glass_id)
@@ -274,23 +291,6 @@ def main_yield_from(ret):
     elapsed_edc = time.time() - t0
     msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
     print(msg.format(len(results), elapsed_edc))
-
-
-def report_for_multi(results_dict):
-    # output csv files. using a+
-    print('start write csv file.')
-    for key, values in results_dict.items():
-        g_id, sid = key.split('_')
-        path = os.path.join(BASE_DIR, g_id + '.csv')
-        with open(path, 'a+') as fp:
-            for value in values:
-                value = list(map(str, value))
-                for i in range(len(value)):
-                    if isinstance(value[i], datetime):
-                        value[i] = (value[i].strftime('%Y/%m/%d %H:%M:%S'))
-                fp.write(', '.join(value))
-                fp.write('\n')
-    print('write csv file done.')
 
 
 def main_multiprocess(ret):
