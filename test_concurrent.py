@@ -50,7 +50,8 @@ def query_many(query, glass_id):
     """
     workers = min(MAX_WORKER, len(glass_id))
     with futures.ThreadPoolExecutor(max_workers=workers) as executor:
-        future_to_gid = {executor.submit(query, g_id): g_id for g_id in sorted(glass_id)} 
+        future_to_gid = {executor.submit(
+            query, g_id): g_id for g_id in sorted(glass_id)}
         result = {}
         for future in futures.as_completed(future_to_gid):
             g_id = future_to_gid[future]
@@ -99,7 +100,7 @@ def query_edc_data_many(query, datas):
     with futures.ProcessPoolExecutor() as executor:
         future_to_sid = {
             executor.submit(
-            query, value[0], value[1], value[2]): value[1] for value in datas
+                query, value[0], value[1], value[2]): value[1] for value in datas
         }
         result = {}
         for future in futures.as_completed(future_to_sid):
@@ -125,7 +126,7 @@ def query_edc_data_many_mulit(query, datas, results_dict=None):
     with futures.ProcessPoolExecutor() as executor:
         future_to_sid = {
             executor.submit(
-            query, value[0], value[1], value[2]): value[0]+'_'+value[1] for value in datas
+                query, value[0], value[1], value[2]): value[0] + '_' + value[1] for value in datas
         }
         result = {}
         for future in futures.as_completed(future_to_sid):
@@ -154,7 +155,7 @@ def query_edc_data_many_dict(query, datas):
         for key, values in datas.items():
             future_to_sid = {
                 executor.submit(
-                query, value[0], value[1], value[2]): value[1] for value in values
+                    query, value[0], value[1], value[2]): value[1] for value in values
             }
             res = {}
             for future in futures.as_completed(future_to_sid):
@@ -254,7 +255,7 @@ def main_future(ret):
     print(msg.format(len(results), elapsed_edc))
 
     # output csv files
-    #for key, values in results.items():
+    # for key, values in results.items():
     #    report(g_id=key, datas=values)
 
 
@@ -265,7 +266,7 @@ def main_yield_from(ret):
     for key, values in ret.items():
         t1 = time.time()
         msg = '\n{}, {} each glass_id_dec_step_id query in {:.2f}s'
-        #yield from 
+        # yield from
         group = grouper(results, key)
         next(group)
         for value in values:
@@ -285,7 +286,7 @@ def main_multiprocess(ret):
     pool = multiprocessing.Pool()
 
     manager = multiprocessing.Manager()
-    results_dict = manager.dict() # share data
+    results_dict = manager.dict()  # share data
     record = []
     lock = multiprocessing.Lock()
 
