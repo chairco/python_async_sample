@@ -115,7 +115,7 @@ def query_edc_data_many_mulit(query, datas, results_dict=None):
                 #print('%r step_id has %d rows' % (g_s_id, len(data)))
                 pass
             result.setdefault(g_s_id, data)
-            results_dict[g_s_id] = data
+            if results_dict != None: results_dict[g_s_id] = data
     return result
 
 
@@ -276,6 +276,23 @@ def main_yield_from(ret):
     print(msg.format(len(results), elapsed_edc))
 
 
+def report_for_multi(results_dict):
+    # output csv files. using a+
+    print('start write csv file.')
+    for key, values in results_dict.items():
+        g_id, sid = key.split('_')
+        path = os.path.join(BASE_DIR, g_id + '.csv')
+        with open(path, 'a+') as fp:
+            for value in values:
+                value = list(map(str, value))
+                for i in range(len(value)):
+                    if isinstance(value[i], datetime):
+                        value[i] = (value[i].strftime('%Y/%m/%d %H:%M:%S'))
+                fp.write(', '.join(value))
+                fp.write('\n')
+    print('write csv file done.')
+
+
 def main_multiprocess(ret):
     print('\n #### main_multiprocess() ####')
     multiprocessing.freeze_support()
@@ -309,22 +326,33 @@ def main_multiprocess(ret):
     msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
     print(msg.format(len(gid_list), elapsed_edc))
 
-    # output csv files. using a+
-    '''
-    print('start write csv file.')
-    for key, values in results_dict.items():
-        g_id, sid = key.split('_')
-        path = os.path.join(BASE_DIR, g_id + '.csv')
-        with open(path, 'a+') as fp:
-            for value in values:
-                value = list(map(str, value))
-                for i in range(len(value)):
-                    if isinstance(value[i], datetime):
-                        value[i] = (value[i].strftime('%Y/%m/%d %H:%M:%S'))
-                fp.write(', '.join(value))
-                fp.write('\n')
-    print('write csv file done.')
-    '''
+    # report
+    #report_for_multi(results_dict) 
+
+
+def main_pool(ret):
+    # should set <export PYTHONOPTIMIZE=1>
+    print('\n #### main_pool() ####')
+    multiprocessing.freeze_support()
+    pool = multiprocessing.Pool()
+    results = []
+    
+    t0 = time.time()
+    
+    for key, values in ret.items():
+        result = pool.apply_async(query_edc_data_many_mulit, args=(auto.get_edc_data, values,))
+        results.append(result)
+    
+    pool.close()
+    pool.join()
+    
+    # data structure:
+    # [{gid1_sid:[raw_data], gid1_sid:[row_data]}, {gid1_sid:[raw_data], gid1_sid:[row_data]}]
+    datas = [result.get() for result in results]
+
+    elapsed_edc = time.time() - t0
+    msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
+    print(msg.format(len(results), elapsed_edc))
 
 
 def main_concurrent(ret):
@@ -341,8 +369,10 @@ def main_concurrent(ret):
 
 if __name__ == '__main__':
     ret = main(auto.get_edc_glass_history, query_many)
-    main_multiprocess(ret)
-    main_future(ret)
-    main_yield_from(ret)
-    main_crazy_future(ret)
-    main_concurrent(ret)
+    main_yield_from(ret) # slow
+    main_crazy_future(ret) # normal
+    main_future(ret) # normal
+    main_pool(ret) # fast
+    main_multiprocess(ret) # fast
+    main_concurrent(ret) # fast
+    
