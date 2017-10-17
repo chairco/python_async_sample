@@ -1,9 +1,7 @@
 # -*- coding:utf-8 -*-
-import time
-
-import multiprocessing
-
 import os
+import time
+import multiprocessing
 
 from datetime import datetime
 
@@ -17,6 +15,7 @@ try:
 except Exception as e:
     import db
     import auto
+
 
 Result = namedtuple('Result', 'data')
 
@@ -62,31 +61,6 @@ def query_many(query, glass_id):
             else:
                 print('%r glass_id has %d rows' % (g_id, len(data)))
             result.setdefault(g_id, data)
-    return result
-
-
-def _query_edc_data_many(query, data):
-    """
-    Query oracle db by mutiplethread, performace not good
-    :type query: query object
-    :type datas: list
-    :rtype dict()  
-    """
-    workers = min(MAX_WORKER, len(data))
-    with futures.ThreadPoolExecutor(max_workers=workers) as executor:
-        to_do = []
-        future = executor.submit(query, data[0], data[1], data[2])
-        to_do.append(future)
-        #msg = 'Scheduled for {}: {}'
-        #print(msg.format(g_id, future))
-
-        result = []
-        for future in futures.as_completed(to_do):
-            res = future.result()
-            msg = '{} result: {!r}'
-            #print(msg.format(future, res))
-            result.append(res)
-
     return result
 
 
@@ -190,14 +164,6 @@ def grouper(result, key):
     """
     while True:
         result[key] = yield from edc_data()
-
-
-def chain(*iterables):
-    """
-    Just test yield
-    """
-    for it in iterables:
-        yield from it
 
 
 def report(g_id, datas):
@@ -314,6 +280,7 @@ def main_multiprocess(ret):
     print(msg.format(len(gid_list), elapsed_edc))
 
     # output csv files. using a+
+    '''
     print('start write csv file.')
     for key, values in results_dict.items():
         g_id, sid = key.split('_')
@@ -327,6 +294,7 @@ def main_multiprocess(ret):
                 fp.write(', '.join(value))
                 fp.write('\n')
     print('write csv file done.')
+    '''
 
 
 if __name__ == '__main__':
