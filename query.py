@@ -24,9 +24,10 @@ class Queryedc:
     Here is API for query oracle db whith high level multiprocess. 
     :types query: auto.query object
     """
+
     def __init__(self):
         pass
-    
+
     def _query_histroy_concurrency(self, query, glass_id):
         """
         Query oracle db by mutiplethread
@@ -82,7 +83,8 @@ class Queryedc:
 
     @checktypes
     def glass_data(self, glass_id: list):
-        sid_dataset = self._query_histroy_concurrency(auto.get_edc_glass_history, glass_id)
+        sid_dataset = self._query_histroy_concurrency(
+            auto.get_edc_glass_history, glass_id)
         values = list(chain.from_iterable(sid_dataset.values()))
         return self._query_data_concurrency(auto.get_edc_data, values)
 
@@ -95,10 +97,9 @@ if __name__ == '__main__':
     t0 = time.time()
 
     q = Queryedc()
-    #q.glass_history(glass_id)
+    # q.glass_history(glass_id)
     results = q.glass_data(glass_id)
-    
+
     elapsed_edc = time.time() - t0
     msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
     print(msg.format(len(results), elapsed_edc))
-    
