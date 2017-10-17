@@ -9,6 +9,8 @@ from concurrent import futures
 
 from collections import namedtuple
 
+from itertools import chain
+
 try:
     from . import db
     from . import auto
@@ -125,7 +127,8 @@ def query_edc_data_many_dict(query, datas):
     :rtype dict()  
     """
     result = {}
-    with futures.ProcessPoolExecutor() as executor:
+    workers = min(30, len(datas))
+    with futures.ProcessPoolExecutor(max_workers=workers) as executor:
         for key, values in datas.items():
             future_to_sid = {
                 executor.submit(
@@ -143,6 +146,33 @@ def query_edc_data_many_dict(query, datas):
                     pass
                 res.setdefault(s_id, data)
             result.setdefault(key, res)
+    return result
+
+
+def query_edc_currency(query, datas):
+    """
+    Query oracle db with chain data by mutipleprocess
+    :type query: query object
+    :type datas: list
+    :rtype dict()  
+    """
+    workers = min(50, len(datas))
+    with futures.ProcessPoolExecutor(max_workers=workers) as executor:
+        future_to_sid = {
+            executor.submit(
+                query, value[0], value[1], value[2]): value[0] + '_' + value[1] for value in datas
+        }
+        result = {}
+        for future in futures.as_completed(future_to_sid):
+            g_s_id = future_to_sid[future]
+            try:
+                data = future.result()
+            except Exception as exc:
+                print('%r generated an exception: %s' % (g_s_id, exc))
+            else:
+                #print('%r step_id has %d rows' % (g_s_id, len(data)))
+                pass
+            result.setdefault(g_s_id, data)
     return result
 
 
@@ -221,8 +251,8 @@ def main_future(ret):
     print(msg.format(len(results), elapsed_edc))
 
     # output csv files
-    # for key, values in results.items():
-    #    report(g_id=key, datas=values)
+    for key, values in results.items():
+        report(g_id=key, datas=values)
 
 
 def main_yield_from(ret):
@@ -297,9 +327,22 @@ def main_multiprocess(ret):
     '''
 
 
+def main_concurrent(ret):
+    print('\n #### main_concurrent() ####')
+    t0 = time.time()
+    
+    values = list(chain.from_iterable(ret.values()))
+    results = query_edc_currency(auto.get_edc_data, values)
+
+    elapsed_edc = time.time() - t0
+    msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
+    print(msg.format(len(results), elapsed_edc))
+
+
 if __name__ == '__main__':
     ret = main(auto.get_edc_glass_history, query_many)
     main_multiprocess(ret)
     main_future(ret)
     main_yield_from(ret)
     main_crazy_future(ret)
+    main_concurrent(ret)
