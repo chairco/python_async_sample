@@ -89,7 +89,7 @@ def _query_edc_data_many(query, data):
     return result
 
 
-def query_edc_data_many(query, datas, result=None):
+def query_edc_data_many(query, datas):
     """
     Query oracle db by mutipleprocess
     :type query: query object
@@ -112,6 +112,33 @@ def query_edc_data_many(query, datas, result=None):
                 #print('%r step_id has %d rows' % (s_id, len(data)))
                 pass
             result.setdefault(s_id, data)
+    return result
+
+
+def query_edc_data_many_mulit(query, datas, results_dict=None):
+    """
+    Query oracle db by mutipleprocess
+    :type query: query object
+    :type datas: list
+    :rtype dict()  
+    """
+    with futures.ProcessPoolExecutor() as executor:
+        future_to_sid = {
+            executor.submit(
+            query, value[0], value[1], value[2]): value[0]+'_'+value[1] for value in datas
+        }
+        result = {}
+        for future in futures.as_completed(future_to_sid):
+            g_s_id = future_to_sid[future]
+            try:
+                data = future.result()
+            except Exception as exc:
+                print('%r generated an exception: %s' % (g_s_id, exc))
+            else:
+                #print('%r step_id has %d rows' % (g_s_id, len(data)))
+                pass
+            result.setdefault(g_s_id, data)
+            results_dict[g_s_id] = data
     return result
 
 
@@ -191,72 +218,119 @@ def report(g_id, datas):
 
 
 def main(query, query_many):
-    multiprocessing.freeze_support()
-    pool = multiprocessing.Pool()
-    
     t0 = time.time()
     ret = query_many(query, glass_id)
     elapsed = time.time() - t0
     msg = '\n{} glass_id query in {:.2f}s'
     print(msg.format(len(ret), elapsed))
+    return ret
 
+
+def main_crazy_future(ret):
+    print('\n #### main_crazy_future() ####')
     t0 = time.time()
-    
     # Query by thread 7s BUT process 2~3s
-    results = query_edc_data_many(auto.get_edc_data, ret)
-    #results.setdefault(key, result)
-    print(msg.format(key, len(result), time.time() - t1))
+    results = query_edc_data_many_dict(auto.get_edc_data, ret)
+    elapsed_edc = time.time() - t0
+    msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
+    print(msg.format(len(results), elapsed_edc))
 
+
+def main_future(ret):
+    print('\n #### main_future() ####')
     results = {}
-    
-    manager = multiprocessing.Manager()
-    result = manager.dict()
-    record = []
-    lock = multiprocessing.Lock()
-
+    t0 = time.time()
     for key, values in ret.items():
         t1 = time.time()
-        #print('{}: \n{}'.format(key, list(chain(values))))
-        msg = '\n{}, {} each glass_id_dec_step_id query in {:.2f}s'
-        
-        '''
         # Query by thread 7s BUT process 2~3s
         result = query_edc_data_many(auto.get_edc_data, values)
         results.setdefault(key, result)
-        print(msg.format(key, len(result), time.time() - t1))
-        '''
 
-        # mutiProcess
-        process = multiprocessing.Process(
-            target=query_edc_data_many,
-            args=(auto.get_edc_data, values, result)
-        )
-        process.start()
-        record.append(process)
-
-        # yield from 
-        #group = grouper(results, key)
-        #next(group)
-        #for value in values:
-        #    print('send value: {}'.format(value))
-        #    group.send(value)
-        #group.send(None)
-        #print(msg.format(len(results), time.time() - t1))
-
-    for process in record:
-        process.join()
-
-    print(result.values())
+        #msg = '\n{}, {} each glass_id_dec_step_id query in {:.2f}s'
+        #print(msg.format(key, len(result), time.time() - t1))
 
     elapsed_edc = time.time() - t0
     msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
     print(msg.format(len(results), elapsed_edc))
-    
+
     # output csv files
     #for key, values in results.items():
     #    report(g_id=key, datas=values)
 
 
-if __name__ == '__main__':
-    main(auto.get_edc_glass_history, query_many)
+def main_yield_from(ret):
+    print('\n #### main_yield_from() ####')
+    results = {}
+    t0 = time.time()
+    for key, values in ret.items():
+        t1 = time.time()
+        msg = '\n{}, {} each glass_id_dec_step_id query in {:.2f}s'
+        #yield from 
+        group = grouper(results, key)
+        next(group)
+        for value in values:
+            print('send value: {}'.format(value))
+            group.send(value)
+        group.send(None)
+        print(msg.format(key, len(results), time.time() - t1))
 
+    elapsed_edc = time.time() - t0
+    msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
+    print(msg.format(len(results), elapsed_edc))
+
+
+def main_multiprocess(ret):
+    print('\n #### main_multiprocess() ####')
+    multiprocessing.freeze_support()
+    pool = multiprocessing.Pool()
+
+    manager = multiprocessing.Manager()
+    results_dict = manager.dict() # share data
+    record = []
+    lock = multiprocessing.Lock()
+
+    t0 = time.time()
+    for key, values in ret.items():
+        # mutiProcess
+        process = multiprocessing.Process(
+            target=query_edc_data_many_mulit,
+            args=(auto.get_edc_data, values, results_dict)
+        )
+        process.start()
+        record.append(process)
+
+    for process in record:
+        process.join()
+
+    gid_list = []
+    for key, value in results_dict.items():
+        gid, sid = key.split('_')
+        if gid not in gid_list:
+            gid_list.append(gid)
+
+    elapsed_edc = time.time() - t0
+    msg = '\n{} All glass_id_dec_step_id query in {:.2f}s'
+    print(msg.format(len(gid_list), elapsed_edc))
+
+    # output csv files. using a+
+    print('start write csv file.')
+    for key, values in results_dict.items():
+        g_id, sid = key.split('_')
+        path = os.path.join(BASE_DIR, g_id + '.csv')
+        with open(path, 'a+') as fp:
+            for value in values:
+                value = list(map(str, value))
+                for i in range(len(value)):
+                    if isinstance(value[i], datetime):
+                        value[i] = (value[i].strftime('%Y/%m/%d %H:%M:%S'))
+                fp.write(', '.join(value))
+                fp.write('\n')
+    print('write csv file done.')
+
+
+if __name__ == '__main__':
+    ret = main(auto.get_edc_glass_history, query_many)
+    main_multiprocess(ret)
+    main_future(ret)
+    main_yield_from(ret)
+    main_crazy_future(ret)
