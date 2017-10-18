@@ -31,7 +31,8 @@ def get_edc_glass_history(glass_id):
         """
         SELECT "GLASS_ID", "STEP_ID", "GLASS_START_TIME" 
         FROM lcdsys.array_pds_glass_t t
-        WHERE 1=1 AND t.glass_id = :glass_id
+        WHERE 1=1
+        AND t.glass_id = :glass_id
         ORDER BY glass_start_time
         """,
         {'glass_id': glass_id}
@@ -73,10 +74,10 @@ def get_teg_glass_history(glass_id):
     cursor = db.get_cursor()
     cursor.execute(
         """
-        SELECT *
+        SELECT "GLASS_ID", "STEP_ID", "GLASS_START_TIME"
         FROM lcdsys.array_glass_v t
         WHERE 1=1
-        AND glass_id = :glass_id
+        AND t.glass_id = :glass_id
         ORDER BY glass_Start_time ASC
         """,
         {'glass_id': glass_id}
@@ -85,7 +86,7 @@ def get_teg_glass_history(glass_id):
     return rows
 
 
-def get_teg_raw_data(glass_id, step_id):
+def get_teg_data(glass_id, step_id, start_time):
     """
     rtype
     """
@@ -95,9 +96,15 @@ def get_teg_raw_data(glass_id, step_id):
         SELECT *
         FROM lcdsys.array_glass_summary_v t
         WHERE 1=1
-        AND glass_id = :glass_id
-        AND step_id = :step_id
-        """
+        AND t.GLASS_ID = :glass_id
+        AND t.STEP_ID = :step_id
+        AND t.GLASS_START_TIME = :start_time
+        """,
+        {
+            'glass_id': glass_id,
+            'step_id': step_id,
+            'start_time': start_time
+        }
     )
     rows = cursor.fetchall()
     return rows
