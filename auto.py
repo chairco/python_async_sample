@@ -132,9 +132,9 @@ def get_teg_param_data(glass_id, step_id, start_time):
     return rows
 
 
-def get_teg_result_data(glass_id, step_id, start_time, param_name):
+def get_teg_result(glass_id, step_id, start_time, param_name):
     """
-    Here is teg raw data
+    Here is teg raw data with one
     rtype
     """
     cursor = db.get_cursor()
@@ -154,6 +154,49 @@ def get_teg_result_data(glass_id, step_id, start_time, param_name):
             'start_time': start_time,
             'param_name': param_name
         }
+    )
+    rows = cursor.fetchall()
+    return rows
+
+
+def get_teg_result_sub(glass_id, step_id, start_time):
+    cursor = db.get_cursor()
+    cursor.execute(
+        """
+        SELECT *
+        FROM LCDSYS.ARRAY_RESULT_V t
+        WHERE 1=1
+        AND t.glass_id = :glass_id
+        AND t.step_id = :step_id
+        AND t.PARAM_NAME IN
+        (SELECT "PARAM_NAME" 
+         FROM LCDSYS.ARRAY_GLASS_SUMMARY_V s 
+         WHERE 1=1 
+         and s.glass_id = :glass_id 
+         and s.step_id = :step_id
+         and s.glass_start_time = :start_time
+        ) 
+        """,
+        {
+            'glass_id': glass_id,
+            'step_id': step_id,
+            'start_time': start_time
+        }
+    )
+    rows = cursor.fetchall()
+    return rows
+
+
+def get_sid_with_param(glass_id):
+    cursor = db.get_cursor()
+    cursor.execute(
+        """
+        SELECT DISTINCT "STEP_ID"
+        from LCDSYS.ARRAY_RESULT_V t
+        WHERE 1=1 
+        AND t.glass_id = :glass_id
+        """,
+        {'glass_id': glass_id}
     )
     rows = cursor.fetchall()
     return rows
