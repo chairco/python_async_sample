@@ -11,12 +11,8 @@ from collections import namedtuple
 
 from itertools import chain
 
-try:
-    from . import db
-    from . import auto
-except Exception as e:
-    import db
-    import auto
+import db
+import auto
 
 
 Result = namedtuple('Result', 'data')

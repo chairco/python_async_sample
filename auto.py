@@ -2,10 +2,7 @@ import time
 
 from concurrent import futures
 
-try:
-    from . import db
-except Exception as e:
-    import db
+import db
 
 
 __all__ = [
