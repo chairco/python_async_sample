@@ -30,11 +30,13 @@ def log_time():
     """
     return str(time.strftime("%Y%m%d%H%M", time.localtime(time.time())))
 
+
 def call_lazylog(f):
     def lazylog(*args, **kwargs):
-        log_path = os.path.join(os.getcwd(), 'logs', log_time()+'-'+str(uuid.uuid1())+'.log')
+        log_path = os.path.join(os.getcwd(), 'logs',
+                                log_time() + '-' + str(uuid.uuid1()) + '.log')
         lazy_logger.log_to_console(logger)
-        lazy_logger.log_to_rotated_file(logger=logger,file_name=log_path)
+        lazy_logger.log_to_rotated_file(logger=logger, file_name=log_path)
         logger.info('logger file: {0}'.format(log_path))
         kwargs['log_path'] = log_path
         return f(*args, **kwargs)
@@ -45,7 +47,7 @@ class Querybase:
     """
     Here is query base with concurrency. using high level multiprocess.
     """
-    
+
     def _query_history_concurrency(self, query, glass_id):
         """
         Query oracle db by mutiplethread
@@ -197,11 +199,12 @@ class Queryteg(Querybase):
     def _bind_parm(self, glass_id: list, subquery=False):
         sid_dataset = self.glass_param_data(glass_id)
         gid_with_param = self.glass_with_param(glass_id)
-        
+
         query_list = {}
         for key, values in sid_dataset.items():
             gid, sid = key.split('_')
-            if sid in chain.from_iterable(gid_with_param[gid]) and values: # value not empty save
+            # value not empty save
+            if sid in chain.from_iterable(gid_with_param[gid]) and values:
                 if subquery:
                     query_list.setdefault(key, values[0])
                 else:
@@ -229,7 +232,7 @@ class Queryteg(Querybase):
     def _binds_parm(self, glass_id: list):
         sid_dataset = self.glass_param_data(glass_id)
         gid_with_param = self.glass_with_param(glass_id)
-        
+
         query_list = {}
         for key, values in sid_dataset.items():
             gid, sid = key.split('_')
@@ -266,7 +269,7 @@ def main(*args, **kwargs):
     msg = '\n{} glass_id query in {:.2f}s'
     print(msg.format(len(ret), elapsed))
     '''
-    
+
     t0 = time.time()
     ret2 = q.glass_raw_data(glass_id, subquery=True)
     #ret2 = q.glass_raws_data(glass_id)
