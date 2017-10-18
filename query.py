@@ -23,6 +23,7 @@ class Querybase:
     """
     Here is query base with concurrency.
     """
+
     def _query_history_concurrency(self, query, glass_id):
         """
         Query oracle db by mutiplethread
@@ -111,7 +112,7 @@ if __name__ == '__main__':
     with open('sample.csv', 'r') as fp:
         glass_id = fp.readlines()
     glass_id = [i.rstrip() for i in glass_id]
-    
+
     # test teg
     t0 = time.time()
     q = Queryteg()
@@ -120,7 +121,6 @@ if __name__ == '__main__':
     msg = '\n{} glass_id query in {:.2f}s'
     print(msg.format(len(ret), elapsed))
 
-    
     # test edc
     t0 = time.time()
     q = Queryedc()

@@ -9,10 +9,10 @@ except Exception as e:
 
 
 __all__ = [
-            'get_edc_glass_history', 'get_edc_data',
-            'get_teg_glass_history', 'get_teg_raw_data',
-            'get_teg_summary_data'
-        ]
+    'get_edc_glass_history', 'get_edc_data',
+    'get_teg_glass_history', 'get_teg_raw_data',
+    'get_teg_summary_data'
+]
 
 
 class GlassDoesNotExist(ValueError):
