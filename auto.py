@@ -69,6 +69,7 @@ def get_edc_data(glass_id, step_id, start_time):
 
 def get_teg_glass_history(glass_id):
     """
+    Here is teg history
     rtype
     """
     cursor = db.get_cursor()
@@ -88,6 +89,7 @@ def get_teg_glass_history(glass_id):
 
 def get_teg_data(glass_id, step_id, start_time):
     """
+    Here is teg summary data
     rtype
     """
     cursor = db.get_cursor()
@@ -110,8 +112,32 @@ def get_teg_data(glass_id, step_id, start_time):
     return rows
 
 
-def get_teg_summary_data(glass_id, step_id, param_name):
+def get_teg_param_data(glass_id, step_id, start_time):
     """
+    """
+    cursor = db.get_cursor()
+    cursor.execute(
+        """
+        SELECT "GLASS_ID", "STEP_ID", "GLASS_START_TIME", "PARAM_NAME"
+        FROM LCDSYS.ARRAY_GLASS_SUMMARY_V t
+        WHERE 1=1
+        AND t.GLASS_ID = :glass_id
+        AND t.STEP_ID = :step_id
+        AND t.GLASS_START_TIME = :start_time
+        """,
+        {
+            'glass_id': glass_id,
+            'step_id': step_id,
+            'start_time': start_time
+        }
+    )
+    rows = cursor.fetchall()
+    return rows
+
+
+def get_teg_result_data(glass_id, step_id, start_time, param_name):
+    """
+    Here is teg raw data
     rtype
     """
     cursor = db.get_cursor()
@@ -120,13 +146,15 @@ def get_teg_summary_data(glass_id, step_id, param_name):
         SELECT *
         FROM lcdsys.array_result_v t
         WHERE 1=1
-        AND glass_id = :glass_id
-        AND step_id = :step_id
-        AND param_name = :param_name
+        AND t.GLASS_ID = :glass_id
+        AND t.STEP_ID = :step_id
+        AND t.GLASS_START_TIME = :start_time
+        AND t.PARAM_NAME = :param_name
         """,
         {
             'glass_id': glass_id,
             'step_id': step_id,
+            'start_time': start_time,
             'param_name': param_name
         }
     )
