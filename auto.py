@@ -168,13 +168,13 @@ def get_teg_result_sub(glass_id, step_id, start_time):
         WHERE 1=1
         AND t.glass_id = :glass_id
         AND t.step_id = :step_id
-        AND t.PARAM_NAME IN
-        (SELECT "PARAM_NAME" 
-         FROM LCDSYS.ARRAY_GLASS_SUMMARY_V s 
-         WHERE 1=1 
-         and s.glass_id = :glass_id 
-         and s.step_id = :step_id
-         and s.glass_start_time = :start_time
+        AND t.PARAM_NAME IN(
+            SELECT "PARAM_NAME" 
+            FROM LCDSYS.ARRAY_GLASS_SUMMARY_V s 
+            WHERE 1=1 
+            and s.glass_id = :glass_id 
+            and s.step_id = :step_id
+            and s.glass_start_time = :start_time
         ) 
         """,
         {
