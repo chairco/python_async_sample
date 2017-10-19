@@ -48,6 +48,7 @@ class Querybase:
     Here is query base with concurrency. using high level multiprocess.
     """
 
+    @logger.patch
     def _query_history_concurrency(self, query, glass_id):
         """
         Query oracle db by mutiplethread
@@ -71,6 +72,7 @@ class Querybase:
                 result.setdefault(g_id, data)
         return result
 
+    @logger.patch
     def _query_data_concurrency(self, query, datas):
         """
         Query oracle db with chain data by mutipleprocess
@@ -97,6 +99,7 @@ class Querybase:
                 result.setdefault(g_s_id, data)
         return result
 
+    @logger.patch
     def _query_rawdata_concurrency(self, query, datas):
         """
         Query oracle db by mutipleprocess
@@ -124,6 +127,7 @@ class Querybase:
                 result.setdefault(g_s_id, data)
         return result
 
+    @logger.patch
     def _query_rawdata_sub_concurrency(self, query, datas):
         """
         Query oracle db by mutipleprocess
@@ -228,32 +232,8 @@ class Queryteg(Querybase):
             query = auto.get_teg_result
             return self._query_rawdata_concurrency(query, values)
 
-    @checktypes
-    def _binds_parm(self, glass_id: list):
-        sid_dataset = self.glass_param_data(glass_id)
-        gid_with_param = self.glass_with_param(glass_id)
-
-        query_list = {}
-        for key, values in sid_dataset.items():
-            gid, sid = key.split('_')
-            if sid in chain.from_iterable(gid_with_param[gid]) and values:
-                query_list.setdefault(key, values[0])
-        return query_list
-
-    @checktypes
-    def glass_raws_data(self, glass_id: list):
-        """
-        SQL command using 'param_name in PARAM_NAME' to get param_name data a time
-        :type: query_list: list
-        :types values: list 
-        """
-        query_list = self._binds_parm(glass_id)
-        values = list(query_list.values())
-        return self._query_rawdata_sub_concurrency(auto.get_teg_result_sub, values)
-
 
 @call_lazylog
-@logger.patch
 def main(*args, **kwargs):
     with open('sample.csv', 'r') as fp:
         glass_id = fp.readlines()
@@ -261,15 +241,18 @@ def main(*args, **kwargs):
 
     # test teg
     q = Queryteg()
+
     '''
+    print('get rawdata without subquery')
     t0 = time.time()
-    #ret = q.glass_raw_data(glass_id, subquery=False)
+    ret = q.glass_raw_data(glass_id, subquery=False)
     print(len(list(chain.from_iterable(ret.values()))))
     elapsed = time.time() - t0
     msg = '\n{} glass_id query in {:.2f}s'
     print(msg.format(len(ret), elapsed))
     '''
 
+    print('get rawdata with subquery')
     t0 = time.time()
     ret2 = q.glass_raw_data(glass_id, subquery=True)
     #ret2 = q.glass_raws_data(glass_id)
