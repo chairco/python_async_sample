@@ -190,19 +190,19 @@ class Queryteg(Querybase):
         return self._query_data_concurrency(auto.get_teg_data, values)
 
     @checktypes
-    def glass_param_data(self, glass_id: list):
+    def _glass_param_data(self, glass_id: list):
         sid_dataset = self.glass_history(glass_id)
         values = list(chain.from_iterable(sid_dataset.values()))
         return self._query_data_concurrency(auto.get_teg_param_data, values)
 
     @checktypes
-    def glass_with_param(self, glass_id: list):
+    def _glass_with_param(self, glass_id: list):
         return self._query_history_concurrency(auto.get_sid_with_param, glass_id)
 
     @checktypes
     def _bind_parm(self, glass_id: list, subquery=False):
-        sid_dataset = self.glass_param_data(glass_id)
-        gid_with_param = self.glass_with_param(glass_id)
+        sid_dataset = self._glass_param_data(glass_id)
+        gid_with_param = self._glass_with_param(glass_id)
 
         query_list = {}
         for key, values in sid_dataset.items():
@@ -242,7 +242,6 @@ def main(*args, **kwargs):
     # test teg
     q = Queryteg()
 
-    '''
     print('get rawdata without subquery')
     t0 = time.time()
     ret = q.glass_raw_data(glass_id, subquery=False)
@@ -250,12 +249,11 @@ def main(*args, **kwargs):
     elapsed = time.time() - t0
     msg = '\n{} glass_id query in {:.2f}s'
     print(msg.format(len(ret), elapsed))
-    '''
+    
 
     print('get rawdata with subquery')
     t0 = time.time()
     ret2 = q.glass_raw_data(glass_id, subquery=True)
-    #ret2 = q.glass_raws_data(glass_id)
     print(len(list(chain.from_iterable(ret2.values()))))
     elapsed = time.time() - t0
     msg = '{} glass_id query in {:.2f}s'
