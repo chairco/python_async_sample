@@ -47,7 +47,6 @@ class Querybase:
     """
     Here is query base with concurrency. using high level multiprocess.
     """
-
     @logger.patch
     def _query_history_concurrency(self, query, glass_id):
         """
@@ -160,8 +159,7 @@ class Queryedc(Querybase):
     """
     Here is API for query table from oracle db. 
     :types query: auto.query object
-    """
-
+    """    
     @checktypes
     def glass_history(self, glass_id: list):
         return self._query_history_concurrency(auto.get_edc_glass_history, glass_id)
@@ -234,14 +232,13 @@ class Queryteg(Querybase):
 
 
 @call_lazylog
-def main(*args, **kwargs):
+def teg_main(*args, **kwargs):
     with open('sample.csv', 'r') as fp:
         glass_id = fp.readlines()
     glass_id = [i.rstrip() for i in glass_id]
 
-    # test teg
     q = Queryteg()
-
+    # test teg
     print('get rawdata without subquery')
     t0 = time.time()
     ret = q.glass_raw_data(glass_id, subquery=False)
@@ -250,7 +247,7 @@ def main(*args, **kwargs):
     msg = '\n{} glass_id query in {:.2f}s'
     print(msg.format(len(ret), elapsed))
     
-
+    # test teg
     print('get rawdata with subquery')
     t0 = time.time()
     ret2 = q.glass_raw_data(glass_id, subquery=True)
@@ -259,14 +256,22 @@ def main(*args, **kwargs):
     msg = '{} glass_id query in {:.2f}s'
     print(msg.format(len(ret2), elapsed))
 
+
+@call_lazylog
+def edc_main(*args, **kwargs):
+    with open('sample.csv', 'r') as fp:
+        glass_id = fp.readlines()
+    glass_id = [i.rstrip() for i in glass_id]
+
+    q = Queryedc()
     # test edc
-    #t0 = time.time()
-    #q = Queryedc()
-    #ret = q.glass_history(glass_id)
-    #elapsed = time.time() - t0
-    #msg = '\n{} glass_id query in {:.2f}s'
-    #print(msg.format(len(ret), elapsed))
+    t0 = time.time()
+    ret = q.glass_history(glass_id)
+    elapsed = time.time() - t0
+    msg = '\n{} glass_id query in {:.2f}s'
+    print(msg.format(len(ret), elapsed))
 
 
 if __name__ == '__main__':
-    main()
+    edc_main()
+    #teg_main()
