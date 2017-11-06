@@ -2,31 +2,43 @@ import time
 
 import db
 
+import db_pg
 
-class FdcPgSQL:
-    """ETL PostgreSQL DB
+
+def dictfetchall(cursor):
+    """Return all rows from a cursor as a dict
+    """
+    columns = [col[0] for col in cursor.description]
+    return [
+        dict(zip(columns, row))
+        for row in cursor.fetchall()
+    ]
+
+
+class FdcPGSQL:
+    """ETL PostgreSQL DB method
     """
 
-    def get_lastendtime(self, equipment):
+    def get_lastendtime(self, toolid):
         """get apname last insert time
         """
-        cursor = db.get_cursor()
+        cursor = db_pg.get_cursor()
         cursor.execute(
             """
             SELECT apname, last_end_time, virtual_recipe
             FROM "lastendtime"
-            WHERE TOOLID = %(equipment)s
-            AND enabled = "TRUE"
+            WHERE TOOLID = %(toolid)s
+            AND enabled = 'TRUE'
             """,
-            {'equipment: self.equipment.upper()'},
+            {'toolid': toolid.upper()},
         )
-        rows = cursor.fetchall()
-        return rows
+        queryset = dictfetchall(cursor)
+        return queryset
 
     def get_pgclass(self, toolid, rownum=1):
         """get pglass rownum data
         """
-        cursor = db.get_cursor()
+        cursor = db_pg.get_cursor()
         cursor.execute(
             """
             SELECT %(rownum)s
@@ -45,7 +57,7 @@ class FdcPgSQL:
     def get_schemacolnames(self, toolid):
         """
         """
-        cursor = db.get_cursor()
+        cursor = db_pg.get_cursor()
         cursor.execute(
             """
             SELECT "column_name"
@@ -60,10 +72,10 @@ class FdcPgSQL:
         rows = cursor.fetchall()
         return rows
 
-    def delete_tlcd(self, endtime, num=01):
+    def delete_tlcd(self, endtime, num='01'):
         """default num = 01
         """
-        cursor = db.get_cursor()
+        cursor = db_pg.get_cursor()
         cursor.execute(
             """
             DELETE 
@@ -82,7 +94,7 @@ class FdcPgSQL:
     def delete_toolid(self, toolid, psql_lastendtime, ora_lastendtime):
         """
         """
-        cursor = db.get_cursor()
+        cursor = db_pg.get_cursor()
         cursor.execute(
             """
             DELETE
@@ -100,7 +112,7 @@ class FdcPgSQL:
     def save_endtime(self, endtimes):
         """Insert many rows at a times
         """
-        cursor = db.get_cursor()
+        cursor = db_pg.get_cursor()
         cursor.executemany(
             """
             INSERT INTO "index_glassout"
@@ -112,7 +124,7 @@ class FdcPgSQL:
     def save_edcdata(self, toolid, edcdata):
         """
         """
-        cursor = db.get_cursor()
+        cursor = db_pg.get_cursor()
         cursor.executemany(
             """
             INSERT INTO %(toolid_rawdata)s
@@ -124,16 +136,16 @@ class FdcPgSQL:
             }
         )
 
-    def update_aplastendtime(self, toolid, apname, last_endtime):
+    def update_lastendtime(self, toolid, apname, last_endtime):
         """
         """
-        cursor = db.get_cursor()
+        cursor = db_pg.get_cursor()
         cursor.execute(
             """
-            UPDATE lastendtime
-            SET last_endtime = :last_endtime, update_time = now()
-            WHERE apname = :apname
-            AND toolid = :toolid
+            UPDATE "lastendtime"
+            SET last_endtime = %(last_endtime)s, update_time = now()
+            WHERE apname = %(apname)s
+            AND toolid = %(toolid)s
             """,
             {
                 "ap_lastendtimetblname": "lastendtime",
@@ -145,7 +157,7 @@ class FdcPgSQL:
 
 
 class FdcOracle:
-    """InnoLux Oracle DB
+    """InnoLux Oracle DB method
     """
 
     def get_lastendtime(self):
@@ -198,7 +210,7 @@ class FdcOracle:
             {
                 'colname': colname,
                 'fdc_rawdata': "fdc.{}_rawdata".format(toolid),
-                'psql_lastendtime': psql_lastendtime
+                'psql_lastendtime': psql_lastendtime,
                 'ora_lastendtime': ora_lastendtime
             }
         )

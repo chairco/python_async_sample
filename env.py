@@ -8,7 +8,7 @@ import dotenv
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['ROOT_DIR_PATH', 'DATABASE_INFO']
+__all__ = ['ROOT_DIR_PATH', 'DATABASE_INFO', 'DATABASE_INFO_PG']
 
 
 ROOT_DIR_PATH = pathlib.Path(__file__).resolve().parent
@@ -19,6 +19,8 @@ if dotenv_path.exists():
 
 
 DATABASE_INFO = dj_database_url.parse(os.environ['DATABASE_URL_FDC'])
+
+DATABASE_INFO_PG = dj_database_url.parse(os.environ['DATABASE_URL_TARGET'])
 
 
 # This logs everything to stderr.
