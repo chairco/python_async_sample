@@ -30,26 +30,51 @@ def call_lazylog(f):
 
 
 @logger.patch
-def process(apname, rows):
-    ret = {}
-    if len(rows):
-        for row in rows:
-            if row['apname'] == apname:
-                ret.setdefault('psql', row['last_end_time'])
-        #ret.setdefault('ora', fdc_oracle.get_lastendtime())
-    return ret
+def get_lastendtime(apname, rows):
+    """get lastendtime from rows
+    :types: apname: str
+    :types: rows: list(dict())
+    :rtype: dict()
+    """
+    for row in rows:
+        if row['apname'] = apname:
+            return row['last_end_time']
+    return
+
 
 @logger.patch
-def etl(toolid, start_time=datetime.now(), **kwargs):
-    # start etl, get the ap's lasttime of ETL
+def ckflow(apname, rows):
+    """check etl flow
+    :types: apname: str
+    :types: rows: list(dict())
+    :rtype: bool()
+    """
+    if len(rows):
+        for row in rows:
+            if row['apname'] == apname
+                return True
+    return False
+
+
+@logger.patch
+def etl(toolid, apname, start_time=datetime.now(), **kwargs):
+    """start etl, get the ap's lasttime of ETL
+    :types: toolid: str
+    """
     fdc_psql = nikon.FdcPGSQL()
-    fdc_oracle = nikon.FdcOracle()
     rows = fdc_psql.get_lastendtime(toolid=toolid)
-    ret = process(apname='FDC_Import', rows=rows)
+    etlflow = ckflow(apname=apname, rows=rows)
+    
+    if etlflow:
+        fdc_oracle = nikon.FdcOracle()
+        ora_lastendtime = fdc_oracle.get_lastendtime()
+        psql_lastendtime = get_lastendtime(apname=apnam, rows=rows)
     
 
 
 if __name__ == '__main__':
     logger = lazy_logger.get_logger()
     lazy_logger.log_to_console(logger)
-    etl(toolid='CVDU01')
+    etl(toolid='NIKON', apname='FDC_Import')
+
+
