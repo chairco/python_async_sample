@@ -90,6 +90,16 @@ def rscript(r, toolid, df):
     return rprocess
 
 
+def rscript_avm(r, toolid, starttime, endtime):
+    rprocess = OrderedDict()
+    commands = OrderedDict([
+        (toolid, [RSript, r, starttime, endtime]),
+    ])
+    for cmd_name, cmd in commands.items()
+        rprocess[cmd_name] = run_command_under_r_root(cmd)
+    return rprocess
+
+
 class ETL:
     """docstring for ETL
     """
@@ -101,19 +111,23 @@ class ETL:
         self.eda_oracle = nikon.EdcOracle()
         self.toolid = toolid
 
+    def aplastendtime(self, apname):
+        row = self.fdc_psql.get_lastendtime(
+            toolid=self.toolid,
+            apname=apname
+        )
+        return row
+
     @logger.patch
     def etl(self, apname, *args, **kwargs):
         """start etl import, get the ap's lasttime of ETL
         :types: toolid: str
         """
-        row = self.fdc_psql.get_lastendtime(
-            toolid=self.toolid,
-            apname=apname
-        )
+        row = self.aplastendtime(apname=apname)
         etlflow = ckflow(row=row)
-
         if etlflow:
-            ora_lastendtime = self.fdc_oracle.get_lastendtime()
+            #TODO transfer oracle lastendtime
+            #ora_lastendtime = self.fdc_oracle.get_lastendtime()
             ora_lastendtime = datetime.now()
             psql_lastendtime = get_lastendtime(row=row)
 
@@ -187,16 +201,9 @@ class ETL:
     def rot(self, apname, *args, **kwargs):
         """start etl roi 
         """
-        row = self.fdc_psql.get_lastendtime(
-            toolid=self.toolid,
-            apname=apname
-        )
-        edcrow = self.fdc_psql.get_lastendtime(
-            toolid=self.toolid,
-            apname='EDC_Import'
-        )
+        row = self.aplastendtime(apname=apname)
+        edcrow = self.aplastendtime(apname='EDC_Import')
         rotflow = ckflow(row=row)
-
         if rotflow:
             psql_lastendtime_edc = get_lastendtime(row=edcrow)
             psql_lastendtime_rot = get_lastendtime(row=row)
@@ -204,8 +211,10 @@ class ETL:
             #update_endtime = psql_lastendtime_edc
 
         while True:
+            # stop on here
             if update_starttime == psql_lastendtime_edc:
                 break
+
             update_starttime += timedelta(seconds=86400)
             if update_starttime < psql_lastendtime_edc:
                 update_endtime = update_starttime
@@ -248,7 +257,7 @@ class ETL:
                 # Update lastendtime for ROT_Transform
                 try:
                     self.fdc_psql.update_lastendtime(
-                        toolid=toolid, 
+                        toolid=toolid,
                         apname=apname,
                         last_endtime=update_endtime
                     )
@@ -260,15 +269,47 @@ class ETL:
     def avm(self, apname, *args, **kwargs):
         """start etl avm
         """
-        pass
+        row_rot = self.aplastendtime(apname='ROT_Transform')
+        row_avm = self.aplastendtime(apname=apname)
+
+        lastendtime_rot = get_lastendtime(row=row_rot)
+        lastendtime_avm = get_lastendtime(row=row_avm)
+
+        if lastendtime_rot > lastendtime_avm:
+            starttime = lastendtime_avm
+            endtime = lastendtime_rot
+
+        while True:
+            if starttime >= lastendtime_rot:
+                break
+            starttime += timedelta(seconds=86400)
+            if starttime < lastendtime_rot:
+                endtime = starttime
+            else:
+                endtime = lastendtime_rot
+
+            # run rscript_avm
+            ret = rscript_avm(
+                r='TLCD_Nikon_VM_Fcn',
+                starttime=starttime, 
+                endtime=endtime
+            )
+
+            # ????
+            if ret:
+                # Update lastendtime table
+                self.fdc_psql.update_lastendtime(
+                    toolid=self.toolid,
+                    apname=apname,
+                    last_endtime=endtime
+                )
 
 
 if __name__ == '__main__':
     logger = lazy_logger.get_logger()
     lazy_logger.log_to_console(logger)
-    #etl(toolid='NIKON', apname='EDC_Import')
-    #rot(toolid='NIKON', apname='ROT_Transform')
 
     etl = ETL(toolid='NIKON')
     etl.etl(apname='EDC_Import')
     etl.rot(apname='ROT_Transform')
+    etl.avm(apname='AVM_Process')
