@@ -18,9 +18,11 @@ if dotenv_path.exists():
     dotenv.load_dotenv(str(dotenv_path))
 
 
-DATABASE_INFO = dj_database_url.parse(os.environ['DATABASE_URL_FDC'])
+DATABASE_INFO = dj_database_url.parse(os.environ['DATABASE_URL_EDA'])
 
-DATABASE_INFO_PG = dj_database_url.parse(os.environ['DATABASE_URL_TARGET'])
+DATABASE_INFO_FDC = dj_database_url.parse(os.environ['DATABASE_URL_FDC'])
+
+DATABASE_INFO_PG = dj_database_url.parse(os.environ['DATABASE_URL_PG'])
 
 
 # This logs everything to stderr.
