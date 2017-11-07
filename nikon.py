@@ -2,6 +2,8 @@ import time
 
 import db
 
+import db_fdc
+
 import db_pg
 
 
@@ -19,18 +21,22 @@ class FdcPGSQL:
     """ETL PostgreSQL DB method
     """
 
-    def get_lastendtime(self, toolid):
+    def get_lastendtime(self, toolid, apname):
         """get apname last insert time
         """
         cursor = db_pg.get_cursor()
         cursor.execute(
             """
-            SELECT apname, last_end_time, virtual_recipe
+            SELECT "apname", "last_end_time", "virtual_recipe"
             FROM "lastendtime"
-            WHERE TOOLID = %(toolid)s
-            AND enabled = 'TRUE'
+            WHERE "TOOLID" = %(toolid)s
+            AND "enabled" = 'TRUE'
+            AND "apname" = %(apname)s
             """,
-            {'toolid': toolid.upper()},
+            {
+                'toolid': toolid.upper(),
+                'apname': apname
+            },
         )
         queryset = dictfetchall(cursor)
         return queryset
@@ -44,7 +50,7 @@ class FdcPGSQL:
             SELECT %(rownum)s
             FROM "pg_class"
             WHERE 1=1
-            AND relname = %(toolid_rawdata)s
+            AND "relname" = %(toolid_rawdata)s
             """,
             {
                 'rownum': rownum,
@@ -63,7 +69,7 @@ class FdcPGSQL:
             SELECT "column_name"
             FROM "information_schemd.columns"
             WHERE 1=1
-            AND table_name = %(toolid_rawdata)s
+            AND "table_name" = %(toolid_rawdata)s
             """,
             {
                 toolid_rawdata: '{}_rawdata'.fomart(toolid)
@@ -72,7 +78,58 @@ class FdcPGSQL:
         rows = cursor.fetchall()
         return rows
 
-    def delete_tlcd(self, endtime, num='01'):
+    def get_toolid(self, update_starttime, update_endtime, num="01"):
+        """
+        """
+        cursor = db_pg.get_cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT "toolid"
+            FROM "index_glassout" s
+            WHERE "toolid" LIKE %(tlcd)s
+            AND "endtime" > %(update_starttime)s
+            AND "endtime" <= %(update_endtime)s
+            AND "operationid" in (
+                SELECT "proc_operation"
+                FROM "tlcd_nikon_avm_operation_associate_ct"
+            )
+            AND "productid" LIKE 'TL______'
+            AND s.toolid in (
+                SELECT upper(substr(relname,1,8))
+                FROM "pg_class"
+                WHERE 1=1
+                AND "relname" LIKE 'tlcd__01_rawdata' 
+            )
+            """,
+            {
+                'tlcd': 'TLCD__{}'.format(num),
+                'update_starttime': update_starttime,
+                'update_endtime': update_endtime
+            }
+        )
+        rows = cursor.fetchall()
+        return rows
+
+    def get_nikonrot(self, toolid, update_starttime, update_endtime):
+        """
+        """
+        cursor = db_pg.get_cursor()
+        cursor.execute(
+            """
+            SELECT *
+            FROM %(table)s
+            WHERE tstamp >= %(update_starttime)s
+            AND tstamp < %(update_endtime)s
+            """,
+            {
+                'table': '{}_rawdata'.format(toolid),
+                'update_starttime': update_starttime,
+                'update_endtime': update_endtime
+            }
+        )
+
+
+    def delete_tlcd(self, psql_lastendtime, ora_lastendtime, num='01'):
         """default num = 01
         """
         cursor = db_pg.get_cursor()
@@ -80,14 +137,15 @@ class FdcPGSQL:
             """
             DELETE 
             FROM "index_glassout"  
-            WHERE toolid 
+            WHERE "toolid" 
             LIKE %(tlcd)s
-            AND endtime > %(endtime)s 
-            AND endtime <= %(endtime)s
+            AND "endtime" > %(psql_lastendtime)s 
+            AND "endtime" <= %(ora_lastendtime)s
             """,
             {
-                'endtime': endtime,
-                'tlcd': 'TLCD__{}'.format(num)
+                'tlcd': 'TLCD__{}'.format(num),
+                "psql_lastendtime": psql_lastendtime,
+                "ora_lastendtime": ora_lastendtime
             }
         )
 
@@ -109,16 +167,16 @@ class FdcPGSQL:
             }
         )
 
-    def save_endtime(self, endtimes):
+    def save_endtime(self, endtime_data):
         """Insert many rows at a times
         """
         cursor = db_pg.get_cursor()
         cursor.executemany(
             """
             INSERT INTO "index_glassout"
-            VALUES %(endtimes)s
+            VALUES %(endtime_data)s
             """,
-            {'endtimes': endtimes}
+            {'endtime_data': endtime_data}
         )
 
     def save_edcdata(self, toolid, edcdata):
@@ -157,13 +215,13 @@ class FdcPGSQL:
 
 
 class FdcOracle:
-    """InnoLux Oracle DB method
+    """InnoLux  FDC Oracle DB method
     """
 
     def get_lastendtime(self):
         """
         """
-        cursor = db.get_cursor()
+        cursor = db_fdc.get_cursor()
         cursor.execute(
             """
             SELECT to_date(to_char(max(endtime),'yyyy-mm-dd hh24:mi:ss'),'yyyy-mm-dd hh24:mi:ss') as ora_last_end_time 
@@ -175,20 +233,21 @@ class FdcOracle:
         rows = cursor.fetchall()
         return rows
 
-    def get_endtimedata(self, psql_lastendtime, ora_lastendtime):
+    def get_endtimedata(self, psql_lastendtime, ora_lastendtime, num='01'):
         """
         """
-        cursor = db.get_cursor()
+        cursor = db_fdc.get_cursor()
         cursor.execute(
             """
             SELECT *
             FROM fdc.index_glassout
-            WHERE toolid LIKE 'TLCD__01'
+            WHERE toolid LIKE :tlcd
             AND endtime > to_timestamp(':psql_lastendtime', 'YYYY-MM-DD HH24:MI:SS.FF3')
             AND endtime <= to_timestamp(':ora_lastendtime', 'YYYY-MM-DD HH24:MI:SS.FF3')
             """,
             {
                 'ora_proc_endtime_tablename': 'fdc.index_glassout',
+                'tlcd': 'TLCD__{}'.format(num),
                 'psql_lastendtime': psql_lastendtime,
                 'ora_lastendtime': ora_lastendtime
             }
@@ -199,7 +258,7 @@ class FdcOracle:
     def get_edcdata(self, colname, toolid, psql_lastendtime, ora_lastendtime):
         """
         """
-        cursor = db.get_cursor()
+        cursor = db_fdc.get_cursor()
         cursor.execute(
             """
             SELECT :colname
@@ -214,3 +273,39 @@ class FdcOracle:
                 'ora_lastendtime': ora_lastendtime
             }
         )
+        queryset = dictfetchall(cursor)
+        return queryset
+
+
+class EdaOracle:
+    """InnoLux EDC Oracle DB method
+    """
+
+    def get_mearotdata(self, update_starttime, update_endtime):
+        """
+        """
+        cursor = db.get_cursor()
+        cursor.execute(
+            """
+            SELECT 
+            a.step_id, a.glass_id, a.glass_start_time,
+            a.update_time, a.product_id, a.lot_id, 
+            a.equip_id, b.PARAM_COLLECTION, b.PARAM_NAME,
+            b.PARAM_VALUE, b.SITE_NAME
+            FROM lcdsys.array_glass_v a, cdsys.array_result_v b 
+            WHERE 1=1
+            AND a.STEP_ID in ( 'DA60','1360' )
+            AND a.UPDATE_TIME >= to_date(':update_starttime','yyyy/mm/dd hh24:mi:ss')
+            AND a.UPDATE_TIME <= to_date(':update_endtime','yyyy/mm/dd hh24:mi:ss')
+            AND b.PARAM_NAME in ('TP_X','TP_Y')
+            AND b.GLASS_ID = a.GLASS_ID
+            AND b.STEP_ID = a.STEP_ID
+            AND b.GLASS_START_TIME = a.GLASS_START_TIME
+            """,
+            {
+                'update_starttime': update_starttime,
+                'update_endtime': update_endtime
+            }
+        )
+        queryset = dictfetchall(cursor)
+        return queryset
