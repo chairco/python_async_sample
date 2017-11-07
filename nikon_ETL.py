@@ -111,13 +111,6 @@ class ETL:
         self.eda_oracle = nikon.EdcOracle()
         self.toolid = toolid
 
-    def aplastendtime(self, apname):
-        row = self.fdc_psql.get_lastendtime(
-            toolid=self.toolid,
-            apname=apname
-        )
-        return row
-
     @logger.patch
     def etl(self, apname, *args, **kwargs):
         """start etl import, get the ap's lasttime of ETL
@@ -126,7 +119,7 @@ class ETL:
         row = self.aplastendtime(apname=apname)
         etlflow = ckflow(row=row)
         if etlflow:
-            #TODO transfer oracle lastendtime
+            # TODO transfer oracle lastendtime
             #ora_lastendtime = self.fdc_oracle.get_lastendtime()
             ora_lastendtime = datetime.now()
             psql_lastendtime = get_lastendtime(row=row)
@@ -277,11 +270,12 @@ class ETL:
 
         if lastendtime_rot > lastendtime_avm:
             starttime = lastendtime_avm
-            endtime = lastendtime_rot
+            #endtime = lastendtime_rot
 
         while True:
             if starttime >= lastendtime_rot:
                 break
+
             starttime += timedelta(seconds=86400)
             if starttime < lastendtime_rot:
                 endtime = starttime
@@ -291,7 +285,7 @@ class ETL:
             # run rscript_avm
             ret = rscript_avm(
                 r='TLCD_Nikon_VM_Fcn',
-                starttime=starttime, 
+                starttime=starttime,
                 endtime=endtime
             )
 
@@ -303,6 +297,13 @@ class ETL:
                     apname=apname,
                     last_endtime=endtime
                 )
+
+    def aplastendtime(self, apname):
+        row = self.fdc_psql.get_lastendtime(
+            toolid=self.toolid,
+            apname=apname
+        )
+        return row
 
 
 if __name__ == '__main__':
