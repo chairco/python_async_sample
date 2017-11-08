@@ -128,7 +128,6 @@ class FdcPGSQL:
             }
         )
 
-
     def delete_tlcd(self, psql_lastendtime, ora_lastendtime, num='01'):
         """default num = 01
         """
@@ -213,6 +212,17 @@ class FdcPGSQL:
             }
         )
 
+    def refresh_nikonmea(self):
+        """
+        """
+        cursor = db_pg.get_cursor()
+        cursor.execute(
+            """
+            REFRESH MATERIALIZED VIEW
+            tlcd_nikon_mea_process_summary_mv
+            """
+        )
+
 
 class FdcOracle:
     """InnoLux  FDC Oracle DB method
@@ -281,7 +291,7 @@ class EdaOracle:
     """InnoLux EDC Oracle DB method
     """
 
-    def get_mearotdata(self, update_starttime, update_endtime):
+    def get_measrotdata(self, update_starttime, update_endtime):
         """
         """
         cursor = db.get_cursor()
