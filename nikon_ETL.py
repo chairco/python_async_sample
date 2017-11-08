@@ -372,6 +372,17 @@ class ETL:
         )
         return row
 
+    @logger.patch
+    def status(self):
+        """
+        """
+        pass
+
+    def __str__(self):
+        """
+        """
+        pass
+
 
 if __name__ == '__main__':
     logger = lazy_logger.get_logger()
