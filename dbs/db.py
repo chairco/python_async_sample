@@ -2,10 +2,7 @@ import atexit
 
 import cx_Oracle
 
-try:
-    from .env import DATABASE_INFO
-except Exception as e:
-    from env import DATABASE_INFO
+from .env import DATABASE_INFO_EDA
 
 
 _arg_key_pairs = [
@@ -19,9 +16,9 @@ _arg_key_pairs = [
 
 def _build_connct_arg():
     return {
-        arg: DATABASE_INFO_FDC[key]
+        arg: DATABASE_INFO_EDA[key]
         for arg, key in _arg_key_pairs
-        if DATABASE_INFO_FDC[key]
+        if DATABASE_INFO_EDA[key]
     }
 
 

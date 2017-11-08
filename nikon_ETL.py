@@ -4,8 +4,9 @@ import time
 import logging
 import uuid
 
-import nikon
 import lazy_logger
+
+from dbs import nikon
 
 from contextlib import contextmanager
 from collections import OrderedDict
@@ -108,9 +109,9 @@ class ETL:
 
     @logger.patch
     def etl(self, apname, *args, **kwargs):
-        """start etl import, get the ap's lasttime of ETL
-        :types: toolid: str
+        """start etl edc import
         """
+        print("Nikon ETL Process Start...")
         row = self.get_aplastendtime(apname=apname)
         etlflow = ckflow(row=row)
 
@@ -119,6 +120,9 @@ class ETL:
             #ora_lastendtime = self.fdc_oracle.get_lastendtime()
             ora_lastendtime = datetime.now()
             psql_lastendtime = get_lastendtime(row=row)
+            print('Lastendtime, Oracle:{}, PSQL:{}'.format(
+                ora_lastendtime, psql_lastendtime
+            ))
 
         # ora new than psql
         if ora_lastendtime > psql_lastendtime:
@@ -152,6 +156,7 @@ class ETL:
                 # if not exist table save.
                 pgclass = self.fdc_psql.get_pgclass(toolid=toolid)
                 if not len(pgclass):
+                    print('EDC Import {}'.format(toolid))
                     schemacolnames = self.fdc_psql.get_schemacolnames(
                         toolid=toolid
                     )
@@ -173,6 +178,7 @@ class ETL:
                     )
 
                     try:
+                        print('Insert count: {}'.format(toolid))
                         self.fdc_psql.save_edcdata(
                             toolid=toolid,
                             edc_data=edc_data
@@ -192,8 +198,9 @@ class ETL:
 
     @logger.patch
     def rot(self, apname, *args, **kwargs):
-        """start etl roi 
+        """start etl rot
         """
+        print("Nikon ETL ROT Transform Process Start...")
         row = self.get_aplastendtime(apname=apname)
         edcrow = self.get_aplastendtime(apname='EDC_Import')
         rotflow = ckflow(row=row)
@@ -203,6 +210,10 @@ class ETL:
             psql_lastendtime_rot = get_lastendtime(row=row)
             update_starttime = psql_lastendtime_rot
             #update_endtime = psql_lastendtime_edc
+            print('EDC Import Lastendtime: {}'
+                  'ROT Transform Lastendtime: {}'.format(
+                psql_lastendtime_edc, psql_lastendtime_rot        
+            ))
 
         while True:
             # stop on here
@@ -223,30 +234,50 @@ class ETL:
             toolids = list(chain.from_iterable(toolist))
 
             for toolid in toolids:
+                print('Candidate {} time period: {}'.format(
+                    toolid, update_starttime, update_endtime
+                ))
                 nikonrot_data = self.fdc_psql.get_nikonrot(
                     toolid=toolid,
                     update_starttime=update_starttime,
                     update_endtime=update_endtime
                 )
-                # run rscript
-                ret = rscript(
-                    r='TLCD_Nikon_ROT.R',
-                    toolid=toolid,
-                    df=nikonrot_data
-                )
+                print('Candidate count: {}'.format(
+                    len(nikonrot_data)
+                ))
+                
+                if len(nikonrot_data):
+                    # run rscript
+                    ret = rscript(
+                        r='TLCD_Nikon_ROT.R',
+                        toolid=toolid,
+                        df=nikonrot_data
+                    )
+                    print('ROT End...')
 
                 measrot_data = self.eda_oracle.get_measrotdata(
                     update_starttime=update_starttime,
                     update_endtime=update_endtime
                 )
+                print('ROT Transform start Meas Candidate count {}'.format(
+                    len(measrot_data)
+                ))
 
                 if len(measrot_data):
                     # run rscript
                     ret = rscript(
-                        r='TLCD_NIKON_MEA_ROT',
+                        r='TLCD_NIKON_MEA_ROT.R',
                         toolid=toolid,
                         df=measrot_data
                     )
+                    print('ROT Meas End...')
+                
+                # TODO which sql command call to data integration??
+                print('Refresh MTV (tlcd_nikon_mea_process_summary_mv) in the end..."')
+                try:
+                    self.fdc_psql.refresh_nikonmea()
+                except Exception as e:
+                    raise e
 
                 # Update lastendtime for ROT_Transform
                 try:
