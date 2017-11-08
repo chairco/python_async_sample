@@ -160,7 +160,7 @@ class ETL:
                     schemacolnames = self.fdc_psql.get_schemacolnames(
                         toolid=toolid
                     )
-                    
+
                     try:
                         self.fdc_psql.delete_toolid(
                             toolid=toolid,
@@ -212,8 +212,8 @@ class ETL:
             #update_endtime = psql_lastendtime_edc
             print('EDC Import Lastendtime: {}'
                   'ROT Transform Lastendtime: {}'.format(
-                psql_lastendtime_edc, psql_lastendtime_rot        
-            ))
+                      psql_lastendtime_edc, psql_lastendtime_rot
+                  ))
 
         while True:
             # stop on here
@@ -245,7 +245,7 @@ class ETL:
                 print('Candidate count: {}'.format(
                     len(nikonrot_data)
                 ))
-                
+
                 if len(nikonrot_data):
                     # run rscript
                     ret = rscript(
@@ -271,7 +271,7 @@ class ETL:
                         df=measrot_data
                     )
                     print('ROT Meas End...')
-                
+
                 # TODO which sql command call to data integration??
                 print('Refresh MTV (tlcd_nikon_mea_process_summary_mv) in the end..."')
                 try:
