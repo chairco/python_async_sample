@@ -11,8 +11,7 @@ from collections import namedtuple
 
 from itertools import chain
 
-import db
-import auto
+from dbs import auto
 
 
 Result = namedtuple('Result', 'data')
