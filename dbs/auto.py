@@ -1,8 +1,6 @@
 import time
 
-from concurrent import futures
-
-import db
+from . import db
 
 
 __all__ = [

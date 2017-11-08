@@ -1,11 +1,8 @@
 import atexit
 
-import psycopg2
+import cx_Oracle
 
-try:
-    from .env import DATABASE_INFO_PG
-except Exception as e:
-    from env import DATABASE_INFO_PG
+from .env import DATABASE_INFO_FDC
 
 
 _arg_key_pairs = [
@@ -18,11 +15,12 @@ _arg_key_pairs = [
 
 
 def _build_connct_arg():
-    return ' '.join(
-        f'{arg}={DATABASE_INFO_PG[key]}'
+    return {
+        arg: DATABASE_INFO_FDC[key]
         for arg, key in _arg_key_pairs
-        if DATABASE_INFO_PG[key]
-    )
+        if DATABASE_INFO_FDC[key]
+    }
+
 
 _conn = None
 
@@ -43,7 +41,7 @@ def get_cursor():
     global _conn
     if _conn is None:
         arg = _build_connct_arg()
-        _conn = psycopg2.connect(arg)
+        dns_tns = cx_Oracle.makedsn(arg['host'], arg['port'], arg['dbname'])
+        _conn = cx_Oracle.connect(arg['user'], arg['password'], dns_tns, threaded=True)
         atexit.register(cleanup)
     return _conn.cursor()
-    
