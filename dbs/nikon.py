@@ -236,8 +236,8 @@ class FdcOracle:
             LIKE 'TLCD__01'
             """
         )
-        rows = cursor.fetchall()
-        return rows
+        row = cursor.fetchone()
+        return row
 
     def get_endtimedata(self, psql_lastendtime, ora_lastendtime, num='01'):
         """

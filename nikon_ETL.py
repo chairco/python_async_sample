@@ -117,8 +117,8 @@ class ETL:
 
         if etlflow:
             # TODO transfer oracle lastendtime
-            #ora_lastendtime = self.fdc_oracle.get_lastendtime()
-            ora_lastendtime = datetime.now()
+            #ora_lastendtime = datetime.now()
+            ora_lastendtime = self.fdc_oracle.get_lastendtime()[0]
             psql_lastendtime = get_lastendtime(row=row)
             print('Lastendtime, Oracle:{}, PSQL:{}'.format(
                 ora_lastendtime, psql_lastendtime
