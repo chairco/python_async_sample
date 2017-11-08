@@ -316,7 +316,7 @@ class ETL:
 
             # run rscript_avm
             ret = rscript_avm(
-                r='TLCD_Nikon_VM_Fcn',
+                r='TLCD_Nikon_VM_Fcn.R',
                 starttime=starttime,
                 endtime=endtime
             )
