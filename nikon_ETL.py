@@ -113,8 +113,7 @@ class ETL:
 
     @logger.patch
     def etl(self, apname, *args, **kwargs):
-        """start etl import, get the ap's lasttime of ETL
-        :types: toolid: str
+        """start etl edc import
         """
         row = self.aplastendtime(apname=apname)
         etlflow = ckflow(row=row)
