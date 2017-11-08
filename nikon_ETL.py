@@ -4,8 +4,9 @@ import time
 import logging
 import uuid
 
-import nikon
 import lazy_logger
+
+from dbs import nikon
 
 from contextlib import contextmanager
 from collections import OrderedDict
