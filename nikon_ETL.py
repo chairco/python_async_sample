@@ -266,7 +266,7 @@ class ETL:
                 if len(measrot_data):
                     # run rscript
                     ret = rscript(
-                        r='TLCD_NIKON_MEA_ROT.R',
+                        r='TLCD_NIKON_ROT_MEA.R',
                         toolid=toolid,
                         df=measrot_data
                     )
