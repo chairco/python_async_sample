@@ -79,9 +79,9 @@ def run_command_under_r_root(cmd, catched=True):
 def rscript(r, toolid, df):
     rprocess = OrderedDict()
     commands = OrderedDict([
-        (toolid, [RSript, r, df]),
+        (toolid, [RScript, r, df]),
     ])
-    for cmd_name, cmd in commands.items()
+    for cmd_name, cmd in commands.items():
         rprocess[cmd_name] = run_command_under_r_root(cmd)
     return rprocess
 
@@ -89,9 +89,9 @@ def rscript(r, toolid, df):
 def rscript_avm(r, toolid, starttime, endtime):
     rprocess = OrderedDict()
     commands = OrderedDict([
-        (toolid, [RSript, r, starttime, endtime]),
+        (toolid, [RScript, r, starttime, endtime]),
     ])
-    for cmd_name, cmd in commands.items()
+    for cmd_name, cmd in commands.items():
         rprocess[cmd_name] = run_command_under_r_root(cmd)
     return rprocess
 
@@ -104,14 +104,14 @@ class ETL:
         super(ETL, self).__init__()
         self.fdc_psql = nikon.FdcPGSQL()
         self.fdc_oracle = nikon.FdcOracle()
-        self.eda_oracle = nikon.EdcOracle()
+        self.eda_oracle = nikon.EdaOracle()
         self.toolid = toolid
 
     @logger.patch
     def etl(self, apname, *args, **kwargs):
         """start etl edc import
         """
-        print("Nikon ETL Process Start...")
+        print('Nikon ETL Process Start...')
         row = self.get_aplastendtime(apname=apname)
         etlflow = ckflow(row=row)
 
@@ -120,9 +120,7 @@ class ETL:
             #ora_lastendtime = datetime.now()
             ora_lastendtime = self.fdc_oracle.get_lastendtime()[0]
             psql_lastendtime = get_lastendtime(row=row)
-            print('Lastendtime, Oracle:{}, PSQL:{}'.format(
-                ora_lastendtime, psql_lastendtime
-            ))
+            print('Lastendtime, Oracle:{}, PSQL:{}'.format(ora_lastendtime, psql_lastendtime))
 
         # ora new than psql
         if ora_lastendtime > psql_lastendtime:
@@ -139,60 +137,72 @@ class ETL:
                 ora_lastendtime=ora_lastendtime
             )
 
-            # ????
             if len(endtime_data):
-                # replace all time?
-                endtime_data['login_time'] = datetime.now()
+                # Add login time in all row?
+                insert_data = []
+                logintime = datetime.now()
+                for d in endtime_data:
+                    d.setdefault('LOGIN_TIME', logintime)
+                    insert_data.append(tuple(d.values()))
+
                 try:
-                    self.fdc_psql.save_endtime(
-                        endtime_data=endtime_data
-                    )
+                    pass
+                    #self.fdc_psql.save_endtime(
+                    #    endtime_data=insert_data
+                    #)
                 except Exception as e:
                     raise e
 
             # Import data in table
             toolids = list(set(data['TOOLID'] for data in endtime_data))
             for toolid in toolids:
-                # if not exist table save.
+                toolid = toolid.lower()
+                # check table exists.
                 pgclass = self.fdc_psql.get_pgclass(toolid=toolid)
-                if not len(pgclass):
+                print('Toolid: {}, pg_class count: {}'.format(toolid, pgclass))
+
+                if pgclass[0]['count']:
                     print('EDC Import {}'.format(toolid))
+
                     schemacolnames = self.fdc_psql.get_schemacolnames(
                         toolid=toolid
                     )
+                    schemacolnames = ', '.join([c[0].upper() for c in schemacolnames])
+                    print(schemacolnames)
 
                     try:
-                        self.fdc_psql.delete_toolid(
-                            toolid=toolid,
-                            psql_lastendtime=psql_lastendtime,
-                            ora_lastendtime=ora_lastendtime
-                        )
+                        print('Delete Table...')
+                        #self.fdc_psql.delete_toolid(
+                        #    toolid=toolid,
+                        #    psql_lastendtime=psql_lastendtime,
+                        #    ora_lastendtime=ora_lastendtime
+                        #)
                     except Exception as e:
                         raise e
-
+            
                     edc_data = self.fdc_oracle.get_edcdata(
-                        colname=schemacolnames['column_name'],
                         toolid=toolid,
                         psql_lastendtime=psql_lastendtime,
                         ora_lastendtime=ora_lastendtime
                     )
 
                     try:
-                        print('Insert count: {}'.format(toolid))
-                        self.fdc_psql.save_edcdata(
-                            toolid=toolid,
-                            edc_data=edc_data
-                        )
+                        print('Insert Count: {}'.format(len(edc_data)))
+                        #self.fdc_psql.save_edcdata(
+                        #    toolid=toolid,
+                        #    edc_data=edc_data
+                        #)
                     except Exception as e:
                         raise e
 
                 # Update lastendtime
                 try:
-                    self.fdc_psql.update_lastendtime(
-                        toolid=self.toolid,
-                        apname=apname,
-                        last_endtime=ora_lastendtime
-                    )
+                    pass
+                    #self.fdc_psql.update_lastendtime(
+                    #    toolid=self.toolid,
+                    #    apname=apname,
+                    #    last_endtime=ora_lastendtime
+                    #)
                 except Exception as e:
                     raise e
 
@@ -266,7 +276,7 @@ class ETL:
                 if len(measrot_data):
                     # run rscript
                     ret = rscript(
-                        r='TLCD_NIKON_ROT_MEA.R',
+                        r='TLCD_NIKON_MEA_ROT.R',
                         toolid=toolid,
                         df=measrot_data
                     )
@@ -316,7 +326,7 @@ class ETL:
 
             # run rscript_avm
             ret = rscript_avm(
-                r='TLCD_Nikon_VM_Fcn.R',
+                r='TLCD_Nikon_VM_Fcn',
                 starttime=starttime,
                 endtime=endtime
             )
@@ -333,7 +343,6 @@ class ETL:
                 except Exception as e:
                     raise e
 
-    @logger.patch
     def get_aplastendtime(self, apname, *args, **kwargs):
         row = self.fdc_psql.get_lastendtime(
             toolid=self.toolid,
@@ -348,5 +357,5 @@ if __name__ == '__main__':
 
     etl = ETL(toolid='NIKON')
     etl.etl(apname='EDC_Import')
-    etl.rot(apname='ROT_Transform')
-    etl.avm(apname='AVM_Process')
+    #etl.rot(apname='ROT_Transform')
+    #etl.avm(apname='AVM_Process')
