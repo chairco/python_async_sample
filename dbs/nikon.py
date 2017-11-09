@@ -59,10 +59,10 @@ class FdcPGSQL:
         cursor = db_pg.get_cursor()
         cursor.execute(
             """
-            SELECT "column_name"
-            FROM "information_schema.columns"
+            SELECT column_name
+            FROM information_schema.columns t
             WHERE 1=1
-            AND "table_name" = %(toolid_rawdata)s
+            AND table_name = %(toolid_rawdata)s
             """,
             {
                 'toolid_rawdata': '{}_rawdata'.format(toolid)
@@ -136,8 +136,8 @@ class FdcPGSQL:
             """,
             {
                 'tlcd': 'TLCD__{}'.format(num),
-                "psql_lastendtime": psql_lastendtime,
-                "ora_lastendtime": ora_lastendtime
+                'psql_lastendtime': psql_lastendtime,
+                'ora_lastendtime': ora_lastendtime
             }
         )
 
@@ -257,24 +257,14 @@ class FdcOracle:
         queryset = dictfetchall(cursor)
         return queryset
 
-    def get_edcdata(self, colname, toolid, psql_lastendtime, ora_lastendtime):
+    def get_edcdata(self, toolid, psql_lastendtime, ora_lastendtime):
         """
         """
         cursor = db_fdc.get_cursor()
-        cursor.execute(
-            """
-            SELECT :colname
-            FROM :fdc_rawdata
-            WHERE tstamp > :psql_lastendtime
-            AND tstamp <= :ora_lastendtime
-            """,
-            {
-                'colname': colname,
-                'fdc_rawdata': "fdc.{}_rawdata".format(toolid),
-                'psql_lastendtime': psql_lastendtime,
-                'ora_lastendtime': ora_lastendtime
-            }
-        )
+        sql = "SELECT * FROM fdc.{}_rawdata WHERE tstamp > to_timestamp('{}', 'YYYY-MM-DD HH24:MI:SS.FF3')" \
+              "AND tstamp <= to_timestamp('{}', 'YYYY-MM-DD HH24:MI:SS.FF3')".format(toolid, psql_lastendtime, ora_lastendtime)
+        #sql = "SELECT * FROM fdc.tlcd0801_rawdata WHERE tstamp > to_timestamp('2017-10-26 23:31:27', 'YYYY-MM-DD HH24:MI:SS.FF3') AND tstamp <= to_timestamp('2017-11-09 17:09:01', 'YYYY-MM-DD HH24:MI:SS.FF3')"
+        cursor.execute(sql)
         queryset = dictfetchall(cursor)
         return queryset
 
@@ -297,8 +287,8 @@ class EdaOracle:
             FROM lcdsys.array_glass_v a, cdsys.array_result_v b 
             WHERE 1=1
             AND a.STEP_ID in ( 'DA60','1360' )
-            AND a.UPDATE_TIME >= :update_starttime
-            AND a.UPDATE_TIME <= :update_endtime
+            AND a.UPDATE_TIME >= to_date(':update_starttime','yyyy/mm/dd hh24:mi:ss')
+            AND a.UPDATE_TIME <= to_date(':update_endtime','yyyy/mm/dd hh24:mi:ss')
             AND b.PARAM_NAME in ('TP_X','TP_Y')
             AND b.GLASS_ID = a.GLASS_ID
             AND b.STEP_ID = a.STEP_ID
