@@ -1,5 +1,3 @@
-import time
-
 from . import db, db_fdc, db_pg
 
 
@@ -25,7 +23,7 @@ class FdcPGSQL:
             """
             SELECT "apname", "last_end_time", "virtual_recipe"
             FROM "lastendtime"
-            WHERE "TOOLID" = %(toolid)s
+            WHERE "toolid" = %(toolid)s
             AND "enabled" = 'TRUE'
             AND "apname" = %(apname)s
             """,
@@ -37,24 +35,23 @@ class FdcPGSQL:
         queryset = dictfetchall(cursor)
         return queryset
 
-    def get_pgclass(self, toolid, rownum=1):
+    def get_pgclass(self, toolid):
         """get pglass rownum data
         """
         cursor = db_pg.get_cursor()
         cursor.execute(
             """
-            SELECT %(rownum)s
+            SELECT COUNT(1)
             FROM "pg_class"
             WHERE 1=1
             AND "relname" = %(toolid_rawdata)s
             """,
             {
-                'rownum': rownum,
-                'toolid_rawdata': '{}_rawdata'.fomart(toolid)
+                'toolid_rawdata': '{}_rawdata'.format(toolid)
             }
         )
-        rows = cursor.fetchall()
-        return rows
+        queryset = dictfetchall(cursor)
+        return queryset
 
     def get_schemacolnames(self, toolid):
         """
@@ -63,12 +60,12 @@ class FdcPGSQL:
         cursor.execute(
             """
             SELECT "column_name"
-            FROM "information_schemd.columns"
+            FROM "information_schema.columns"
             WHERE 1=1
             AND "table_name" = %(toolid_rawdata)s
             """,
             {
-                toolid_rawdata: '{}_rawdata'.fomart(toolid)
+                'toolid_rawdata': '{}_rawdata'.format(toolid)
             }
         )
         rows = cursor.fetchall()
@@ -152,13 +149,13 @@ class FdcPGSQL:
             """
             DELETE
             FROM %(toolid_rawdata)s
-            WHERE tstamp > to_timestamp('%(psql_lastendtime)s', 'YYYY-MM-DD HH24:MI:SS.FF3')
-            AND tstamp <= to_timestamp('%(ora_lastendtime)s', 'YYYY-MM-DD HH24:MI:SS.FF3')
+            WHERE tstamp > %(psql_lastendtime)s
+            AND tstamp <= %(ora_lastendtime)s
             """,
             {
-                "toolid_rawdata": "{}_rawdata".format(toolid),
-                "psql_lastendtime": psql_lastendtime,
-                "ora_lastendtime": ora_lastendtime
+                'toolid_rawdata': '{}_rawdata'.format(toolid),
+                'psql_lastendtime': psql_lastendtime,
+                'ora_lastendtime': ora_lastendtime
             }
         )
 
@@ -248,18 +245,17 @@ class FdcOracle:
             SELECT *
             FROM fdc.index_glassout
             WHERE toolid LIKE :tlcd
-            AND endtime > to_timestamp(':psql_lastendtime', 'YYYY-MM-DD HH24:MI:SS.FF3')
-            AND endtime <= to_timestamp(':ora_lastendtime', 'YYYY-MM-DD HH24:MI:SS.FF3')
+            AND endtime > :psql_lastendtime
+            AND endtime <= :ora_lastendtime
             """,
             {
-                'ora_proc_endtime_tablename': 'fdc.index_glassout',
                 'tlcd': 'TLCD__{}'.format(num),
                 'psql_lastendtime': psql_lastendtime,
                 'ora_lastendtime': ora_lastendtime
             }
         )
-        rows = cursor.fetchall()
-        return rows
+        queryset = dictfetchall(cursor)
+        return queryset
 
     def get_edcdata(self, colname, toolid, psql_lastendtime, ora_lastendtime):
         """
@@ -269,8 +265,8 @@ class FdcOracle:
             """
             SELECT :colname
             FROM :fdc_rawdata
-            WHERE tstamp > to_timestamp(' :psql_lastendtime', 'YYYY-MM-DD HH24:MI:SS.FF3')
-            AND tstamp <= to_timestamp(' :ora_lastendtime', 'YYYY-MM-DD HH24:MI:SS.FF3')
+            WHERE tstamp > :psql_lastendtime
+            AND tstamp <= :ora_lastendtime
             """,
             {
                 'colname': colname,
@@ -301,8 +297,8 @@ class EdaOracle:
             FROM lcdsys.array_glass_v a, cdsys.array_result_v b 
             WHERE 1=1
             AND a.STEP_ID in ( 'DA60','1360' )
-            AND a.UPDATE_TIME >= to_date(':update_starttime','yyyy/mm/dd hh24:mi:ss')
-            AND a.UPDATE_TIME <= to_date(':update_endtime','yyyy/mm/dd hh24:mi:ss')
+            AND a.UPDATE_TIME >= :update_starttime
+            AND a.UPDATE_TIME <= :update_endtime
             AND b.PARAM_NAME in ('TP_X','TP_Y')
             AND b.GLASS_ID = a.GLASS_ID
             AND b.STEP_ID = a.STEP_ID
