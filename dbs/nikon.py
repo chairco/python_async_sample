@@ -145,19 +145,10 @@ class FdcPGSQL:
         """
         """
         cursor = db_pg.get_cursor()
-        cursor.execute(
-            """
-            DELETE
-            FROM %(toolid_rawdata)s
-            WHERE tstamp > %(psql_lastendtime)s
-            AND tstamp <= %(ora_lastendtime)s
-            """,
-            {
-                'toolid_rawdata': '{}_rawdata'.format(toolid),
-                'psql_lastendtime': psql_lastendtime,
-                'ora_lastendtime': ora_lastendtime
-            }
-        )
+        sql = "DELETE FROM {}_rawdata WHERE tstamp > to_timestamp('{}', 'YYYY-MM-DD HH24:MI:SS.FF3')"\
+              "AND tstamp <= to_timestamp('{}', 'YYYY-MM-DD HH24:MI:SS.FF3')".format(toolid, psql_lastendtime, ora_lastendtime)
+        cursor.execute(sql)
+        db_pg.commit()
 
     def save_endtime(self, endtime_data):
         """Insert many rows at a times
@@ -174,17 +165,11 @@ class FdcPGSQL:
     def save_edcdata(self, toolid, edcdata):
         """
         """
+        records = ','.join(['%s'] * len(edcdata))
         cursor = db_pg.get_cursor()
-        cursor.executemany(
-            """
-            INSERT INTO %(toolid_rawdata)s
-            VALUES %(edcdata)s
-            """,
-            {
-                "toolid_rawdata": "{}_rawdata".format(toolid),
-                "edcdata": edcdata
-            }
-        )
+        sql = 'INSERT INTO tlcd0801_rawdata VALUES {}'.format(records)
+        cursor.execute(sql, edcdata)
+        db_pg.commit()
 
     def update_lastendtime(self, toolid, apname, last_endtime):
         """

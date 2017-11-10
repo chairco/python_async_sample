@@ -107,6 +107,19 @@ class ETL:
         self.eda_oracle = nikon.EdaOracle()
         self.toolid = toolid
 
+    def column_state(self, edc, schema):
+        add_cols = list(set(edc) - set(schema))
+        del_cols = list(set(schema) - set(edc))
+
+        if add_cols and del_cols:
+            return {'ret': False, 'add': add_cols, 'del': del_cols}
+        elif add_cols:
+            return {'ret': False, 'add': add_cols, 'del': del_cols}
+        elif del_cols:
+            return {'ret': False, 'add': add_cols, 'del': del_cols}
+        else:
+            return {'ret': True, 'add': add_cols, 'del': del_cols}
+
     @logger.patch
     def etl(self, apname, *args, **kwargs):
         """start etl edc import
@@ -155,23 +168,17 @@ class ETL:
 
             # Import data in table
             toolids = list(set(data['TOOLID'] for data in endtime_data))
-            for toolid in toolids:
+            for toolid in sorted(toolids):
                 toolid = toolid.lower()
-                # check table exists.
+                # check table exists or not.
                 pgclass = self.fdc_psql.get_pgclass(toolid=toolid)
                 print('Toolid: {}, pg_class count: {}'.format(toolid, pgclass))
 
                 if pgclass[0]['count']:
-                    print('EDC Import {}'.format(toolid))
 
-                    schemacolnames = self.fdc_psql.get_schemacolnames(
-                        toolid=toolid
-                    )
-                    schemacolnames = ', '.join([c[0].upper() for c in schemacolnames])
-                    print(schemacolnames)
-
+                    print('Reday to Import EDC toolid: {}'.format(toolid))
                     try:
-                        print('Delete Table...')
+                        print('Delete rows duplicate...')
                         #self.fdc_psql.delete_toolid(
                         #    toolid=toolid,
                         #    psql_lastendtime=psql_lastendtime,
@@ -179,23 +186,38 @@ class ETL:
                         #)
                     except Exception as e:
                         raise e
-            
+
+                    schemacolnames = self.fdc_psql.get_schemacolnames(
+                        toolid=toolid
+                    )
+                    schemacolnames = [column[0].upper() for column in schemacolnames]
+
                     edc_data = self.fdc_oracle.get_edcdata(
                         toolid=toolid,
                         psql_lastendtime=psql_lastendtime,
                         ora_lastendtime=ora_lastendtime
                     )
+                    edc_columns = list(edc_data[0].keys())
+
+                    column_state = self.column_state(edc=edc_columns, schema=schemacolnames)
+                    if column_state.get('ret', False):
+                        print('Column status: ret={} add={} del={}'.format(
+                            column_state.get('ret'), column_state.get('add'),
+                            column_state.get('del')
+                        ))
+                        data = [tuple(d.values()) for d in edc_data]
 
                     try:
+                        # should using high performance.
                         print('Insert Count: {}'.format(len(edc_data)))
                         #self.fdc_psql.save_edcdata(
                         #    toolid=toolid,
-                        #    edc_data=edc_data
+                        #    edcdata=data
                         #)
                     except Exception as e:
                         raise e
 
-                # Update lastendtime
+                # Update last endtime.
                 try:
                     pass
                     #self.fdc_psql.update_lastendtime(
