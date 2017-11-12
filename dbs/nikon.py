@@ -167,7 +167,7 @@ class FdcPGSQL:
         """
         records = ','.join(['%s'] * len(edcdata))
         cursor = db_pg.get_cursor()
-        sql = 'INSERT INTO tlcd0801_rawdata VALUES {}'.format(records)
+        sql = 'INSERT INTO tlcd0801_rawdata VALUES ({})'.format(records)
         cursor.execute(sql, edcdata)
         db_pg.commit()
 
