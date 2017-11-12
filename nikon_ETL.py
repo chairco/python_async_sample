@@ -222,12 +222,12 @@ class ETL:
                             column_state.get('ret'), column_state.get('add'),
                             column_state.get('del')
                         ))
-                        #data = [tuple(d.values()) for d in edc_data]
+                        datas = [tuple(d.values()) for d in edc_data]
 
                     try:
                         # should using high performance.
                         print('Insert Count: {}'.format(len(edc_data)))
-                        for idx, values in enumerate(edc_data):
+                        for idx, values in enumerate(datas):
                             group = self.grouper(toolid=toolid)
                             next(group)
                             group.send(values)
