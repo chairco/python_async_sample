@@ -196,11 +196,11 @@ class ETL:
                     print('Reday to Import EDC toolid: {}'.format(toolid))
                     try:
                         print('Delete rows duplicate...')
-                        #self.fdc_psql.delete_toolid(
-                        #    toolid=toolid,
-                        #    psql_lastendtime=psql_lastendtime,
-                        #    ora_lastendtime=ora_lastendtime
-                        #)
+                        self.fdc_psql.delete_toolid(
+                            toolid=toolid,
+                            psql_lastendtime=psql_lastendtime,
+                            ora_lastendtime=ora_lastendtime
+                        )
                     except Exception as e:
                         raise e
 
