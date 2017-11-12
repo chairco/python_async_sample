@@ -3,6 +3,7 @@ import os
 import time
 import logging
 import uuid
+import asyncio
 
 import lazy_logger
 
@@ -120,6 +121,22 @@ class ETL:
         else:
             return {'ret': True, 'add': add_cols, 'del': del_cols}
 
+    @asyncio.coroutine
+    def insert(self, toolid):
+        while True:
+            row = yield
+            if row is None:
+                break
+            self.fdc_psql.save_edcdata(
+                toolid=toolid,
+                edcdata=row
+            )
+
+    @asyncio.coroutine
+    def grouper(self, toolid):
+        while True:
+            yield from self.insert(toolid=toolid)
+
     @logger.patch
     def etl(self, apname, *args, **kwargs):
         """start etl edc import
@@ -205,11 +222,16 @@ class ETL:
                             column_state.get('ret'), column_state.get('add'),
                             column_state.get('del')
                         ))
-                        data = [tuple(d.values()) for d in edc_data]
+                        #data = [tuple(d.values()) for d in edc_data]
 
                     try:
                         # should using high performance.
                         print('Insert Count: {}'.format(len(edc_data)))
+                        for idx, values in enumerate(edc_data):
+                            group = self.grouper(toolid=toolid)
+                            next(group)
+                            group.send(values)
+                        group.send(None)
                         #self.fdc_psql.save_edcdata(
                         #    toolid=toolid,
                         #    edcdata=data
