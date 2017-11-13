@@ -348,6 +348,7 @@ class ETL:
                 except Exception as e:
                     raise e
         '''
+    
     @logger.patch
     def avm(self, apname, *args, **kwargs):
         """start etl avm
