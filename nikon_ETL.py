@@ -35,6 +35,7 @@ def call_lazylog(f):
         logger.info('logger file: {0}'.format(log_path))
         kwargs['log_path'] = log_path
         return f(*args, **kwargs)
+
     return lazylog
 
 
@@ -146,13 +147,11 @@ class ETL:
         etlflow = ckflow(row=row)
 
         if etlflow:
-            # TODO transfer oracle lastendtime
-            #ora_lastendtime = datetime.now()
             ora_lastendtime = self.fdc_oracle.get_lastendtime()[0]
             psql_lastendtime = get_lastendtime(row=row)
             print('Lastendtime, Oracle:{}, PSQL:{}'.format(ora_lastendtime, psql_lastendtime))
 
-        # ora new than psql
+        # ora lastendtime new than psql lastendtime.
         if ora_lastendtime > psql_lastendtime:
             try:
                 self.fdc_psql.delete_tlcd(
@@ -168,7 +167,7 @@ class ETL:
             )
 
             if len(endtime_data):
-                # Add login time in all row?
+                # Add login time in all row.
                 insert_data = []
                 logintime = datetime.now()
                 for d in endtime_data:
@@ -177,9 +176,9 @@ class ETL:
 
                 try:
                     pass
-                    #self.fdc_psql.save_endtime(
+                    # self.fdc_psql.save_endtime(
                     #    endtime_data=insert_data
-                    #)
+                    # )
                 except Exception as e:
                     raise e
 
@@ -232,27 +231,27 @@ class ETL:
                             next(group)
                             group.send(values)
                         group.send(None)
-                        #self.fdc_psql.save_edcdata(
+                        # self.fdc_psql.save_edcdata(
                         #    toolid=toolid,
                         #    edcdata=data
-                        #)
+                        # )
                     except Exception as e:
                         raise e
 
                 # Update last endtime.
                 try:
                     pass
-                    #self.fdc_psql.update_lastendtime(
+                    # self.fdc_psql.update_lastendtime(
                     #    toolid=self.toolid,
                     #    apname=apname,
                     #    last_endtime=ora_lastendtime
-                    #)
+                    # )
                 except Exception as e:
                     raise e
 
     @logger.patch
     def rot(self, apname, *args, **kwargs):
-        """start etl rot
+        """start etl rot, clean data in psql
         """
         print("Nikon ETL ROT Transform Process Start...")
         row = self.get_aplastendtime(apname=apname)
@@ -260,35 +259,38 @@ class ETL:
         rotflow = ckflow(row=row)
 
         if rotflow:
-            psql_lastendtime_edc = get_lastendtime(row=edcrow)
             psql_lastendtime_rot = get_lastendtime(row=row)
-            update_starttime = psql_lastendtime_rot
-            #update_endtime = psql_lastendtime_edc
-            print('EDC Import Lastendtime: {}'
+            psql_lastendtime_edc = get_lastendtime(row=edcrow)
+            update_starttime = datetime.strptime('2017-07-13 20:00:27', '%Y-%m-%d %H:%M:%S')
+            #update_starttime = psql_lastendtime_rot
+            update_endtime = psql_lastendtime_edc
+            print('EDC Import Lastendtime: {}, '
                   'ROT Transform Lastendtime: {}'.format(
-                      psql_lastendtime_edc, psql_lastendtime_rot
-                  ))
+                psql_lastendtime_edc, psql_lastendtime_rot
+            ))
 
         while True:
-            # stop on here
+            # stop if update_starttime same.
             if update_starttime == psql_lastendtime_edc:
+                print('Done')
                 break
 
-            update_starttime += timedelta(seconds=86400)
-            if update_starttime < psql_lastendtime_edc:
-                update_endtime = update_starttime
-            else:
-                update_endtime = psql_lastendtime_edc
+            if (update_starttime + timedelta(seconds=86400)) < psql_lastendtime_edc:
+                update_endtime = update_starttime + timedelta(seconds=86400)
+            #else:
+            #    update_endtime = psql_lastendtime_edc
 
-            # Get candidate of toolist
+            # Get candidates of toolist
             toolist = self.fdc_psql.get_toolid(
                 update_starttime=update_starttime,
                 update_endtime=update_endtime
             )
             toolids = list(chain.from_iterable(toolist))
+            print(toolids)
 
-            for toolid in toolids:
-                print('Candidate {} time period: {}'.format(
+            for toolid in sorted([id.lower() for id in toolids]):
+                print('Candidate {} time period '\
+                      'start: {}, end: {}.'.format(
                     toolid, update_starttime, update_endtime
                 ))
                 nikonrot_data = self.fdc_psql.get_nikonrot(
@@ -299,7 +301,9 @@ class ETL:
                 print('Candidate count: {}'.format(
                     len(nikonrot_data)
                 ))
+            break
 
+        '''
                 if len(nikonrot_data):
                     # run rscript
                     ret = rscript(
@@ -343,7 +347,7 @@ class ETL:
                     update_starttime = update_endtime
                 except Exception as e:
                     raise e
-
+        '''
     @logger.patch
     def avm(self, apname, *args, **kwargs):
         """start etl avm
@@ -356,7 +360,7 @@ class ETL:
 
         if lastendtime_rot > lastendtime_avm:
             starttime = lastendtime_avm
-            #endtime = lastendtime_rot
+            # endtime = lastendtime_rot
 
         while True:
             if starttime >= lastendtime_rot:
@@ -406,11 +410,13 @@ class ETL:
         pass
 
 
-if __name__ == '__main__':
-    logger = lazy_logger.get_logger()
-    lazy_logger.log_to_console(logger)
-
+@call_lazylog
+def etlmain(*args, **kwargs):
     etl = ETL(toolid='NIKON')
-    etl.etl(apname='EDC_Import')
-    #etl.rot(apname='ROT_Transform')
-    #etl.avm(apname='AVM_Process')
+    # etl.etl(apname='EDC_Import')
+    etl.rot(apname='ROT_Transform')
+    # etl.avm(apname='AVM_Process')
+
+
+if __name__ == '__main__':
+    etlmain()

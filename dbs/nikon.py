@@ -107,19 +107,11 @@ class FdcPGSQL:
         """
         """
         cursor = db_pg.get_cursor()
-        cursor.execute(
-            """
-            SELECT *
-            FROM %(table)s
-            WHERE tstamp >= %(update_starttime)s
-            AND tstamp < %(update_endtime)s
-            """,
-            {
-                'table': '{}_rawdata'.format(toolid),
-                'update_starttime': update_starttime,
-                'update_endtime': update_endtime
-            }
-        )
+        sql = "SELECT * FROM {}_rawdata WHERE tstamp >= to_timestamp('{}', 'YYYY-MM-DD HH24:MI:SS.FF3') "\
+              "AND tstamp < to_timestamp('{}', 'YYYY-MM-DD HH24:MI:SS.FF3')".format(toolid, update_starttime, update_endtime)
+        cursor.execute(sql)
+        queryset = dictfetchall(cursor)
+        return queryset
 
     def delete_tlcd(self, psql_lastendtime, ora_lastendtime, num='01'):
         """default num = 01
