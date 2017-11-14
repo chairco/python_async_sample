@@ -47,6 +47,18 @@ get_rotcols <- function() {
 }
 
 
+get_prodwithdv <- function() {
+    sql = sprintf( 
+    "
+    SELECT DISTINCT product 
+    FROM %s 
+    ","tlcd_nikon_main_v"
+    )
+    prod_with_dv <- dbGetQuery(con_psql.etl_rot, sql)
+    return (prod_with_dv)
+}
+
+
 insert_error <- function(rot_error_record) {
     sql <- sprintf(
     "
