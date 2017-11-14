@@ -11,19 +11,16 @@
 oldw <- getOption("warn")
 options(warn = -1)
 
-# load nessecy package
-library(RPostgreSQL)
 library(dplyr)
 library(logging)
 
-drv_psql.etl_rot <- dbDriver("PostgreSQL")
-con_psql.etl_rot <- dbConnect(drv_psql.etl_rot, 
-    dbname = psql.dbname, host = psql.host, 
-    port = psql.port, user = psql.username, 
-    password = psql.password)
+# set relative path
+PATH <- file.path(getwd(),'R')
+setwd(PATH)
 
 # load nessecy function
-source("config.R")
+source("rot_db.R")
+
 
 # setting logging
 logReset()
@@ -77,38 +74,6 @@ tlcd_nikonrot_flow <- function(toolid, update_starttime, update_endtime, verbose
     }
 
     # ROT_PRODUCT
-
-}   
-
-
-get_rawdatas <- function(toolid, update_starttime, update_endtime) {
-    sql <- sprintf(
-        "
-        SELECT * 
-        FROM %s 
-        WHERE tstamp >= '%s' 
-        AND tstamp < '%s'
-        ",paste0(toolid,"_rawdata"), 
-            update_starttime, 
-            update_endtime
-    )
-    rawdata <- dbGetQuery(con_psql.etl_rot, sql)
-    return (rawdata)
-}
-
-
-get_rotcols <- function() {
-    sql <- sprintf(
-        "
-        SELECT col_name
-        FROM %s 
-        WHERE 1=1
-        AND category='tp_al'  
-        ", "tlcd_avm_col"
-    )
-    rot_cols <- dbGetQuery(con_psql.etl_rot, sql)[, 1]
-    rot_cols <- rot_cols[order(substring(rot_cols, 10, 10), substring(rot_cols, 8, 8))]
-    return (rot_cols)
 }
 
 
@@ -139,21 +104,6 @@ get_prodwithdv <- function() {
 }
 
 
-insert_error <- function(rot_error_record) {
-    sql <- sprintf(
-    "
-    INSERT INTO %s(%s)
-    Values
-    %s
-    ","tlcd_nikon_rot_log_ht", 
-    "tstamp, glassid, toolid, operation, product, flag, descr", 
-    rot_log_record
-    )
-    ret <- dbGetQuery(con_psql.etl_rot, sql)
-    return (ret)
-}
-
-
 check_designvalue <- function(dat_alg, prod_with_dv, product_list, prod_no_dv) {
     if (length(prod_no_dv) > 0) {
         lapply(product_list[!(product_list %in% prod_with_dv)], function(no_dv) {
@@ -175,6 +125,7 @@ get_missingdata <- function(dat_alg) {
         arr.ind = TRUE), stringsAsFactors = FALSE)
     return (missing)
 }
+
 
 check_missingvalue <- function(dat_alg, missing_data) {
     if (nrow(missing_data) > 0) {
