@@ -7,6 +7,10 @@ import asyncio
 
 import lazy_logger
 
+import pandas as pd
+
+#from rpy2.robjects import r, pandas2ri
+
 from dbs import nikon
 
 from contextlib import contextmanager
@@ -16,6 +20,7 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
+#pandas2ri.activate()
 
 def log_time():
     """return log datetime
@@ -69,7 +74,8 @@ def cd(newdir):
 
 
 def run_command_under_r_root(cmd, catched=True):
-    RPATH = os.path.join(os.path.abspath(__file__), 'R')
+    RPATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'R')
+    print(RPATH)
     with cd(newdir=RPATH):
         if catched:
             process = sp.run(cmd, stdout=sp.PIPE, stderr=sp.PIPE)
@@ -81,7 +87,7 @@ def run_command_under_r_root(cmd, catched=True):
 def rscript(r, toolid, df):
     rprocess = OrderedDict()
     commands = OrderedDict([
-        (toolid, [RScript, r, df]),
+        (toolid, ['RScript', r, '-d', df]),
     ])
     for cmd_name, cmd in commands.items():
         rprocess[cmd_name] = run_command_under_r_root(cmd)
@@ -149,7 +155,8 @@ class ETL:
         if etlflow:
             ora_lastendtime = self.fdc_oracle.get_lastendtime()[0]
             psql_lastendtime = get_lastendtime(row=row)
-            print('Lastendtime, Oracle:{}, PSQL:{}'.format(ora_lastendtime, psql_lastendtime))
+            print('Lastendtime, Oracle:{}, PSQL:{}'.format(
+                ora_lastendtime, psql_lastendtime))
 
         # ora lastendtime new than psql lastendtime.
         if ora_lastendtime > psql_lastendtime:
@@ -206,7 +213,8 @@ class ETL:
                     schemacolnames = self.fdc_psql.get_schemacolnames(
                         toolid=toolid
                     )
-                    schemacolnames = [column[0].upper() for column in schemacolnames]
+                    schemacolnames = [column[0].upper()
+                                      for column in schemacolnames]
 
                     edc_data = self.fdc_oracle.get_edcdata(
                         toolid=toolid,
@@ -215,7 +223,8 @@ class ETL:
                     )
                     edc_columns = list(edc_data[0].keys())
 
-                    column_state = self.column_state(edc=edc_columns, schema=schemacolnames)
+                    column_state = self.column_state(
+                        edc=edc_columns, schema=schemacolnames)
                     if column_state.get('ret', False):
                         print('Column status: ret={} add={} del={}'.format(
                             column_state.get('ret'), column_state.get('add'),
@@ -261,13 +270,14 @@ class ETL:
         if rotflow:
             psql_lastendtime_rot = get_lastendtime(row=row)
             psql_lastendtime_edc = get_lastendtime(row=edcrow)
-            update_starttime = datetime.strptime('2017-07-13 20:00:27', '%Y-%m-%d %H:%M:%S')
+            update_starttime = datetime.strptime(
+                '2017-07-13 20:00:27', '%Y-%m-%d %H:%M:%S')
             #update_starttime = psql_lastendtime_rot
             update_endtime = psql_lastendtime_edc
             print('EDC Import Lastendtime: {}, '
                   'ROT Transform Lastendtime: {}'.format(
-                psql_lastendtime_edc, psql_lastendtime_rot
-            ))
+                      psql_lastendtime_edc, psql_lastendtime_rot
+                  ))
 
         while True:
             # stop if update_starttime same.
@@ -277,7 +287,7 @@ class ETL:
 
             if (update_starttime + timedelta(seconds=86400)) < psql_lastendtime_edc:
                 update_endtime = update_starttime + timedelta(seconds=86400)
-            #else:
+            # else:
             #    update_endtime = psql_lastendtime_edc
 
             # Get candidates of toolist
@@ -289,10 +299,10 @@ class ETL:
             print(toolids)
 
             for toolid in sorted([id.lower() for id in toolids]):
-                print('Candidate {} time period '\
+                print('Candidate {} time period '
                       'start: {}, end: {}.'.format(
-                    toolid, update_starttime, update_endtime
-                ))
+                          toolid, update_starttime, update_endtime
+                      ))
                 nikonrot_data = self.fdc_psql.get_nikonrot(
                     toolid=toolid,
                     update_starttime=update_starttime,
@@ -301,18 +311,21 @@ class ETL:
                 print('Candidate count: {}'.format(
                     len(nikonrot_data)
                 ))
-            break
+                
+                #df = pd.DataFrame(nikonrot_data[:1])
+                #df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6], 'C':[7,8,9]})
+                #r_dataframe = pandas2ri.py2ri(df)
 
-        '''
                 if len(nikonrot_data):
                     # run rscript
                     ret = rscript(
-                        r='TLCD_Nikon_ROT.R',
+                        r='test.R',
                         toolid=toolid,
-                        df=nikonrot_data
+                        df='123'
                     )
                     print('ROT End...')
-
+            break
+        '''
                 measrot_data = self.eda_oracle.get_measrotdata(
                     update_starttime=update_starttime,
                     update_endtime=update_endtime
@@ -348,7 +361,7 @@ class ETL:
                 except Exception as e:
                     raise e
         '''
-    
+
     @logger.patch
     def avm(self, apname, *args, **kwargs):
         """start etl avm
