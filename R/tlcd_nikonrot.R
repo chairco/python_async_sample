@@ -103,8 +103,11 @@ tlcd_nikonrot_flow <- function(toolid, update_starttime, update_endtime, verbose
             loginfo("Check the positions of Nikon design values")
         }
         # check the position
-        check_position(DV_coord, prodt)
-        return (opt)
+        DV_coord <- check_position(DV_coord, prodt)
+        if (is.null(DV_coord)) {
+            return (NULL)
+        }
+        glass.count <- opt(prodt, DV_coord, dat_ALG_x, dat_ALG_y)
     }
 
     names(rot_by_prodt) <- product_list
@@ -181,10 +184,11 @@ check_position <- function(DV_coord, prodt) {
         insert_errormsg <- insert_error(rot_error_record)
         return (NULL)
     }
+    return (DV_coord)
 }
 
 
-opt <- function(dat_ALG_x) {
+opt <- function(prodt, DV_coord, dat_ALG_x, dat_ALG_y) {
     glass_count <- 0
     for (i in seq_along(dat_ALG_x$glassid)) {
         loginfo(sprintf("product: %s, glassid: %s]", prodt, dat_ALG_x$glassid[i]))
