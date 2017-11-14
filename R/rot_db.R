@@ -72,3 +72,17 @@ insert_error <- function(rot_error_record) {
     ret <- dbGetQuery(con_psql.etl_rot, sql)
     return (ret)
 }
+
+
+get_designvalue <- function(prodt) {
+    sql = sprintf(
+    "
+    ",
+    )
+    DV_cord <- dbGetQuery(con_psql.etl_rot, sql)
+    return (DV_cord)
+}
+
+disconnectdb <- function() {
+    on.exit(dbDisconnect(con_psql.etl_rot, force = TRUE))
+}
