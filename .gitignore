@@ -1,6 +1,7 @@
 # Python virtualenv
 [.]venv
 env/
+env.R
 
 # Python runtime
 # Byte-compiled / optimized / DLL files
