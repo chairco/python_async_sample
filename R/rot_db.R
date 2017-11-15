@@ -6,7 +6,7 @@ library(RPostgreSQL)
 
 
 # load nessecy function
-source("config.R")
+source("env.R")
 
 
 drv_psql.etl_rot <- dbDriver("PostgreSQL")
@@ -50,10 +50,10 @@ get_rotcols <- function() {
 
 get_prodwithdv <- function() {
     sql = sprintf( 
-    "
-    SELECT DISTINCT product 
-    FROM %s 
-    ","tlcd_nikon_main_v"
+        "
+        SELECT DISTINCT product 
+        FROM %s 
+        ","tlcd_nikon_main_v"
     )
     prod_with_dv <- dbGetQuery(con_psql.etl_rot, sql)
     return (prod_with_dv)
@@ -62,13 +62,13 @@ get_prodwithdv <- function() {
 
 insert_error <- function(rot_error_record) {
     sql <- sprintf(
-    "
-    INSERT INTO %s(%s)
-    Values
-    %s
-    ","tlcd_nikon_rot_log_ht", 
-    "tstamp, glassid, toolid, operation, product, flag, descr", 
-    rot_log_record
+        "
+        INSERT INTO %s(%s)
+        Values
+        %s
+        ","tlcd_nikon_rot_log_ht", 
+        "tstamp, glassid, toolid, operation, product, flag, descr", 
+        rot_log_record
     )
     ret <- dbGetQuery(con_psql.etl_rot, sql)
     return (ret)
@@ -77,12 +77,13 @@ insert_error <- function(rot_error_record) {
 
 get_designvalue <- function(prodt) {
     sql = sprintf(
-    "
-    ",
+        "
+        ",
     )
     DV_cord <- dbGetQuery(con_psql.etl_rot, sql)
     return (DV_cord)
 }
+
 
 disconnectdb <- function() {
     dbDisconnect(con_psql.etl_rot, force = TRUE)

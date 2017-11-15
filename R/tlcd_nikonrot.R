@@ -20,6 +20,7 @@ setwd(PATH)
 
 # load nessecy function
 source("rot_db.R")
+source("basic_fun.R")
 
 
 # setting logging
@@ -28,6 +29,7 @@ basicConfig(level='FINEST')
 
 
 tlcd_nikonrot_flow <- function(toolid, update_starttime, update_endtime, verbose = TRUE) {
+    # timeformat: 2017-10-26 23:31:27, 2017-10-26 23:31:27
     rawdata <- get_rawdatas(toolid, update_starttime, update_endtime)
     if (nrow(rawdata) == 0) {
         logwarn("No data to rotate")
@@ -38,7 +40,7 @@ tlcd_nikonrot_flow <- function(toolid, update_starttime, update_endtime, verbose
     }
 
     rot_cols <- get_rotcols()
-    dat_log <- clean_data(rawdata)
+    dat_alg <- clean_data(rawdata)
 
     prod_with_dv <- get_prodwithdv()
     product_list <- get_productlist(dat_alg)
@@ -141,7 +143,7 @@ check_designvalue <- function(dat_alg, prod_with_dv, product_list, prod_no_dv) {
                                                 lapply(seq(nrow(dat_no_dv)), function(num) {
                                                 paste("'", dat_no_dv[num, 1:5], "'", sep = "", collapse = ", ")
                                                 }), no_dv), collapse = ", ")
-            loginfo(insert_error)
+            loginfo(insert_error(rot_error_record))
     })
     dat_alg <- dat_alg %>% filter(!(product %in% prod_no_dv))
     product_list <- get_productlist(dat_log)
