@@ -19,7 +19,7 @@ PATH <- file.path(getwd(),'R')
 setwd(PATH)
 
 # load nessecy function
-source("rot_db.R")
+source("pg_db.R")
 source("basic_fun.R")
 
 
@@ -135,7 +135,7 @@ get_productlist <- function(dat_alg) {
 }
 
 
-check_designvalue <- function(dat_alg, prod_with_dv, product_list, prod_no_dv) {
+check_designvalue <- function(dat_alg, prod_with_dv, product_list) {
     if (length(prod_no_dv) > 0) {
         lapply(product_list[!(product_list %in% prod_with_dv)], function(no_dv) {
             dat_no_dv <- dat_alg %>% filter(product == no_dv)
