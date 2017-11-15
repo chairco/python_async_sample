@@ -55,7 +55,7 @@ get_prodwithdv <- function() {
         FROM %s 
         ","tlcd_nikon_main_v"
     )
-    prod_with_dv <- dbGetQuery(con_psql.etl_rot, sql)
+    prod_with_dv <- dbGetQuery(con_psql.etl_rot, sql)[, 1]
     return (prod_with_dv)
 }
 
