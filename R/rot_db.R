@@ -78,7 +78,22 @@ insert_error <- function(rot_error_record) {
 get_designvalue <- function(prodt) {
     sql = sprintf(
         "
+        SELECT
+          s.pos_no, s.x_coord AS x, s.y_coord AS y
+        FROM
+          %s s,
+          (
+          SELECT
+          cfg_id
+          FROM
+          %s t
+          WHERE 1 = 1
+          AND product = '%s'
+          ) a
+        WHERE 1 = 1
+        AND s.cfg_id = a.cfg_id;
         ",
+        "tlcd_nikon_dv_ct", "tlcd_nikon_main_v", prodt
     )
     DV_cord <- dbGetQuery(con_psql.etl_rot, sql)
     return (DV_cord)
