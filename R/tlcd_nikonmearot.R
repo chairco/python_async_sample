@@ -74,7 +74,7 @@ tlcd_nikon_mea_flow <- function(update_starttime, update_endtime, verbose = TRUE
         }
         # Check how many the glasses are in the data
         uni_comb <- unique(mea_datacleaned[, c("tstamp", "glassid")])
-        glass_count <- get_glasscount(uni_comb, mea_datacleaned)
+        glass_count <- get_glasscount(uni_comb, mea_datacleaned, mea_dv, reshape2)
     })
     names(rot_by_prodt) <- product_list
     rot_endtime <- Sys.time()
@@ -123,17 +123,15 @@ check_designvalue <- function(mea_datacleaned, prod_with_dv, product_list) {
 }
 
 
-get_glasscount <- function(uni_comb, mea_datacleaned) {
+get_glasscount <- function(uni_comb, mea_datacleaned, mea_dv, reshape2) {
     glass_count <- 0
     for (comb in seq(nrow(uni_comb))) {
         loginfo(comb)
         # Reformat the data
-        mea_sub_by_gid <- mea_datacleaned %>%
-            filter(glassid == uni_comb$glassid[comb] & tstamp == uni_comb$tstamp[comb]) %>%
-            select(tstamp, glassid, operation, product, site_name, x = TP_X, y = TP_Y)
-
+        mea_sub_by_gid <- get_gidsub(mea_datacleaned)
         # Give the new labels
         mea_sub_by_gid_new <- mea_label_new_id(mea_sub_by_gid)
+        
         if (nrow(mea_sub_by_gid_new) == 0) {
             logwarn(sprintf("glassid: %s, Raw data has missing values", uni_comb$glassid[comb]))
             rot_error_record <- sprintf("(%s, -1, 'Missing Values')", 
@@ -193,6 +191,14 @@ get_glasscount <- function(uni_comb, mea_datacleaned) {
         })
     }
     return (glass_count)
+}
+
+
+get_gidsub <- function(mea_datacleaned) {
+    mea_sub_by_gid <- mea_datacleaned %>%
+        filter(glassid == uni_comb$glassid[comb] & tstamp == uni_comb$tstamp[comb]) %>%
+        select(tstamp, glassid, operation, product, site_name, x = TP_X, y = TP_Y)
+    return (mea_sub_by_gid)
 }
 
 
