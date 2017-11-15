@@ -14,7 +14,7 @@ con_psql.etl_rot <- dbConnect(drv_psql.etl_rot,
     dbname = psql.dbname, host = psql.host, 
     port = psql.port, user = psql.username, 
     password = psql.password)
-on.exit(dbDisconnect(con_psql.etl_rot, force = TRUE))
+#on.exit(dbDisconnect(con_psql.etl_rot, force = TRUE))
 
 
 get_rawdatas <- function(toolid, update_starttime, update_endtime) {
@@ -37,9 +37,9 @@ get_rotcols <- function() {
     sql <- sprintf(
         "
         SELECT col_name
-        FROM %s 
-        WHERE 1=1
-        AND category='tp_al'  
+        FROM %s
+        WHERE 1 = 1
+        AND category = 'tp_al'  
         ", "tlcd_avm_col"
     )
     rot_cols <- dbGetQuery(con_psql.etl_rot, sql)[, 1]
@@ -92,8 +92,7 @@ get_designvalue <- function(prodt) {
           ) a
         WHERE 1 = 1
         AND s.cfg_id = a.cfg_id;
-        ",
-        "tlcd_nikon_dv_ct", "tlcd_nikon_main_v", prodt
+        ","tlcd_nikon_dv_ct", "tlcd_nikon_main_v", prodt
     )
     DV_cord <- dbGetQuery(con_psql.etl_rot, sql)
     return (DV_cord)
@@ -101,5 +100,6 @@ get_designvalue <- function(prodt) {
 
 
 disconnectdb <- function() {
-    dbDisconnect(con_psql.etl_rot, force = TRUE)
+    #dbDisconnect(con_psql.etl_rot, force = TRUE)
+    on.exit(dbDisconnect(con_psql.etl_rot, force = TRUE))
 }
