@@ -26,37 +26,41 @@ logReset()
 basicConfig(level='FINEST')
 
 tlcd_nikonrotmea_flow <- function(update_starttime, update_endtime, verbose = TRUE) {
+    # Parameter: 
+    # update_starttime: character: 2017-07-13 20:00:27 
+    # update_endtime: character: 2017-07-14 20:00:27
     rawdata <- get_mearawdata(update_starttime, update_endtime)
+    
     if (nrow(rawdata) == 0) {
         logwarn("No data to rotate")
         return (NULL)
     }
+    
     if (verbose) {
         loginfo("Check if there exists design values")
     }
-    mea_cleandata <- clean_data(rawdata)
     
+    mea_cleandata <- clean_data(rawdata)
     product_list <- get_productlist(mea_cleandata)
     prod_withdv <- get_prodwithdv()
     prod_no_dv <- product_list[!(product_list %in% prod_withdv)]
-
     mea_cleandata <- check_designvalue(mea_cleandata, prod_withdv, product_list, prod_no_dv)
+    
     if (nrow(mea_cleandata) == 0) {
         logwarn(sprintf("No design values for ROT"))
         return (NULL)
     }
     product_list <- unique(mea_cleandata$product)
-
     rot_starttime <- Sys.time()
-    loginfo(sprintf("Start %s", rot_starttime))
 
+    loginfo(sprintf("Start %s", rot_starttime))
+    
     # ROT BY Product
     if (verbose) {
         loginfo(sprintf("%s products: %s",
             length(product_list), 
             paste(product_list, collapse = ", ")))
     }
-
     rot_by_prodt <- lapply(product_list, function(prodt){
         # Reading Design value with "tlcd_nikon_mea_dv_ct"
         mea_dv <- get_designvalue(prodt, "tlcd_nikon_mea_dv_ct")
@@ -145,7 +149,6 @@ get_glasscount <- function(uni_comb, mea_cleandata, mea_dv, prodt) {
         mea_sub_by_gid <- get_gidsub(mea_cleandata, comb, uni_comb)
         # Give the new labels
         mea_sub_by_gid_new <- mea_label_new_id(mea_sub_by_gid)
-
         if (nrow(mea_sub_by_gid_new) == 0) {
             logwarn(sprintf("glassid: %s, Raw data has missing values", uni_comb$glassid[comb]))
             rot_error_record <- sprintf("(%s, -1, 'Missing Values')", 
@@ -182,13 +185,11 @@ get_glasscount <- function(uni_comb, mea_cleandata, mea_dv, prodt) {
                 method = "L-BFGS-B")
 
             rot_log_ht_record <- sprintf("(%s, 1)", paste("'", Diff_X[, 1:4], "'", sep = "", collapse = ", "))
-
             mea_rs_x <- Diff_X[, -1:-4] + opt_output$par[1] - mea_dv$y * tan(opt_output$par[3] * 0.000001)
             colnames(mea_rs_x) <- sprintf("X_%s", seq(ncol(mea_rs_x)))
             mea_rs_y <- Diff_Y[, -1:-4] + opt_output$par[2] + mea_dv$x * tan(opt_output$par[3] * 0.000001)
             colnames(mea_rs_y) <- sprintf("Y_%s", seq(ncol(mea_rs_y)))
             mea_rs_xy <- cbind(glassid = Diff_X$glassid, mea_rs_x, mea_rs_y)
-            
             mea_rs_xy_long <-
               reshape2::melt(mea_rs_xy, id.vars = c("glassid"),
                              variable.name = "item_name", value.name = "rot_rs") %>%
@@ -212,7 +213,6 @@ get_glasscount <- function(uni_comb, mea_cleandata, mea_dv, prodt) {
             logerror(sprintf("product: %s glassid: %s Error: %s", prodt, Diff_X$glassid[comb], e))
             rot_error_record <- sprintf("(%s, -4, 'ROT Error: %s')",
                 paste("'", Diff_X[, 1:4], "'", sep = "", collapse = ", "), e)
-        
             if (DEBUG == FALSE) {
                 loginfo('Insert rot data.')
                 ret <- loginfo(insert_error(rot_error_record))

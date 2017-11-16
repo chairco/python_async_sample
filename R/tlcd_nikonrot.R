@@ -34,7 +34,6 @@ tlcd_nikonrot_flow <- function(toolid, update_starttime, update_endtime, verbose
     # toolid: character: 0801, 0501
     # update_starttime: character: 2017-07-13 20:00:27 
     # update_endtime: character: 2017-07-14 20:00:27
-
     rawdata <- get_rawdatas(toolid, update_starttime, update_endtime)
     loginfo(nrow(rawdata))
     if (nrow(rawdata) == 0) {
@@ -44,34 +43,31 @@ tlcd_nikonrot_flow <- function(toolid, update_starttime, update_endtime, verbose
     if (verbose) {
         loginfo("Obtain needed PLFN columns")
     }
-
     rot_cols <- get_rotcols()
     cleandata_alg <- clean_data(rawdata, rot_cols)
     prod_with_dv <- get_prodwithdv()
     product_list <- get_productlist(cleandata_alg)
     prod_no_dv <- product_list[!(product_list %in% prod_with_dv)]
     cleandata_alg <- check_designvalue(cleandata_alg, prod_with_dv, product_list, prod_no_dv)
-
+    
     if (nrow(cleandata_alg) == 0) {
         logwarn(sprintf("No design values for ROT"))
         return (NULL)
     }
     
     product_list <- get_productlist(cleandata_alg)
-
+    
     if (verbose) {
         loginfo("Check if raw data has missing data")
     }
-
     missing_data <- get_missingdata(cleandata_alg)
     cleandata_alg <- check_missingvalue(cleandata_alg, missing_data)
-
 
     if (nrow(cleandata_alg) == 0) {
         logwarn(sprintf("No data after removing missing values"))
         return(NULL)
     }
-
+    
     rot_starttime <- Sys.time()
     loginfo(sprintf("START: %s", rot_starttime))
 
@@ -110,6 +106,7 @@ tlcd_nikonrot_flow <- function(toolid, update_starttime, update_endtime, verbose
         if (verbose) {
             loginfo("Check the positions of Nikon design values")
         }
+        
         # check the position
         DV_coord <- check_position(DV_coord, prodt)
         if (is.null(DV_coord)) {
