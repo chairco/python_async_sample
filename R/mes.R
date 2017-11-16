@@ -35,7 +35,7 @@ if (is.null(opt$start) || is.null(opt$end)){
     ora_disconnectdb()
     stop("At least one argument must be supplied (input start and end time).\n", call.=FALSE)
 } else{
-    loginfo('execute...')
+    loginfo('execute MES...')
     #tid <- sprintf('tlcd%s', opt$tid)
     ret <- main(opt$start, opt$end)
     loginfo(sprintf('ret: %s', ret))

@@ -38,11 +38,11 @@ if (is.null(opt$tid) || is.null(opt$start) || is.null(opt$end)){
     psql_disconnectdb()
     stop("At least one argument must be supplied (input start and end time).\n", call.=FALSE)
 } else{
-    loginfo('execute...')
+    loginfo('execute ROT...')
     tid <- sprintf('tlcd%s', opt$tid)
     ret <- main(tid, opt$start, opt$end)
     loginfo(sprintf('ret: %s', ret))
-    }
+}
 
 
 tlcd_rot <- function(raw_data='Hello', verbose = TRUE) {
