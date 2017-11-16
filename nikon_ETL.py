@@ -9,18 +9,21 @@ import lazy_logger
 
 import pandas as pd
 
-#from rpy2.robjects import r, pandas2ri
-
 from dbs import nikon
 
 from contextlib import contextmanager
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from itertools import dropwhile, chain
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-#pandas2ri.activate()
+
+ParsedCompletedCommand = namedtuple(
+    'ParsedCompletedCommand',
+    ['returncode', 'args', 'stdout', 'stderr']    
+)
+
 
 def log_time():
     """return log datetime
@@ -72,10 +75,25 @@ def cd(newdir):
     finally:
         os.chdir(prevdir)
 
+def decode_cmd_out(completed_cmd):
+    try:
+        stdout = completed_cmd.stdout.decode()
+    except AttributeError:
+        stdout = '<EMPTY>'
+    try:
+        stderr = completed_cmd.stderr.decode()
+    except AttributeError:
+        stderr = '<EMPTY>'
+    return ParsedCompletedCommand(
+        completed_cmd.returncode,
+        completed_cmd.args,
+        stdout,
+        stderr
+    )
+
 
 def run_command_under_r_root(cmd, catched=True):
     RPATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'R')
-    print(RPATH)
     with cd(newdir=RPATH):
         if catched:
             process = sp.run(cmd, stdout=sp.PIPE, stderr=sp.PIPE)
@@ -84,10 +102,35 @@ def run_command_under_r_root(cmd, catched=True):
         return process
 
 
-def rscript(r, toolid, df):
+def rscript_rot(r, toolid, update_starttime, update_endtime):
+    """
+    Execute R script tlcd_niknrot.R and tlcd_niknrotmea.R
+    """
     rprocess = OrderedDict()
     commands = OrderedDict([
-        (toolid, ['RScript', r, '-d', df]),
+        (toolid, [
+            'RScript', r,
+            '-t', toolid, 
+            '-s', update_starttime,
+            '-e', update_endtime
+        ]),
+    ])
+    for cmd_name, cmd in commands.items():
+        rprocess[cmd_name] = run_command_under_r_root(cmd)
+    return rprocess
+
+
+def rscript_mea(r, toolid, update_starttime, update_endtime):
+    """
+    Execute R script tlcd_niknrot.R and tlcd_niknrotmea.R
+    """
+    rprocess = OrderedDict()
+    commands = OrderedDict([
+        (toolid, [
+            'RScript', r,
+            '-s', update_starttime,
+            '-e', update_endtime
+        ]),
     ])
     for cmd_name, cmd in commands.items():
         rprocess[cmd_name] = run_command_under_r_root(cmd)
@@ -299,68 +342,41 @@ class ETL:
             print(toolids)
 
             for toolid in sorted([id.lower() for id in toolids]):
-                print('Candidate {} time period '
-                      'start: {}, end: {}.'.format(
-                          toolid, update_starttime, update_endtime
-                      ))
-                nikonrot_data = self.fdc_psql.get_nikonrot(
+                rotlog = self.execute_r_rot(
                     toolid=toolid,
                     update_starttime=update_starttime,
                     update_endtime=update_endtime
                 )
-                print('Candidate count: {}'.format(
-                    len(nikonrot_data)
-                ))
                 
-                #df = pd.DataFrame(nikonrot_data[:1])
-                #df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6], 'C':[7,8,9]})
-                #r_dataframe = pandas2ri.py2ri(df)
-
-                if len(nikonrot_data):
-                    # run rscript
-                    ret = rscript(
-                        r='test.R',
-                        toolid=toolid,
-                        df='123'
-                    )
-                    print('ROT End...')
-            break
-        '''
-                measrot_data = self.eda_oracle.get_measrotdata(
+                rotmeslog = self.execute_r_rotmes(
+                    toolid=toolid,
                     update_starttime=update_starttime,
-                    update_endtime=update_endtime
+                    update_endtime=update_endtime                    
                 )
-                print('ROT Transform start Meas Candidate count {}'.format(
-                    len(measrot_data)
-                ))
-
-                if len(measrot_data):
-                    # run rscript
-                    ret = rscript(
-                        r='TLCD_NIKON_MEA_ROT.R',
-                        toolid=toolid,
-                        df=measrot_data
-                    )
-                    print('ROT Meas End...')
 
                 # TODO which sql command call to data integration??
-                print('Refresh MTV (tlcd_nikon_mea_process_summary_mv) in the end..."')
                 try:
-                    self.fdc_psql.refresh_nikonmea()
+                    print('Refresh MTV (tlcd_nikon_mea_process_summary_mv) in the end..."')
+                    pass
+                    #self.fdc_psql.refresh_nikonmea()
                 except Exception as e:
                     raise e
 
                 # Update lastendtime for ROT_Transform
                 try:
-                    self.fdc_psql.update_lastendtime(
-                        toolid=toolid,
-                        apname=apname,
-                        last_endtime=update_endtime
-                    )
-                    update_starttime = update_endtime
+                    print('Update lastendtime for ROT_Transform')
+                    pass
+                    #self.fdc_psql.update_lastendtime(
+                    #    toolid=toolid,
+                    #    apname=apname,
+                    #    last_endtime=update_endtime
+                    #)
+                    #update_starttime = update_endtime
                 except Exception as e:
                     raise e
-        '''
+
+            #TODO short term to break, should remark in product.
+            break
 
     @logger.patch
     def avm(self, apname, *args, **kwargs):
@@ -393,7 +409,7 @@ class ETL:
                 endtime=endtime
             )
 
-            # ????
+            # TODO ????
             if ret:
                 try:
                     # Update lastendtime table
@@ -404,6 +420,62 @@ class ETL:
                     )
                 except Exception as e:
                     raise e
+
+    def execute_r_rot(self, toolid, update_starttime, update_endtime):
+        print('Candidate {} time period '
+              'start: {}, end: {}.'.format(
+                  toolid, update_starttime, update_endtime
+              ))
+
+        nikonrot_data = self.fdc_psql.get_nikonrot(
+            toolid=toolid,
+            update_starttime=update_starttime,
+            update_endtime=update_endtime
+        )
+        print('Candidate count: {}'.format(
+            len(nikonrot_data)
+        ))
+
+        if len(nikonrot_data):
+            # run rscript
+            print('{} ROT Start {}'.format("#"*5, "#"*5))
+            ret = rscript_rot(
+                r='rot.R',
+                toolid=toolid,
+                update_starttime=update_starttime.strftime('%Y-%m-%d %H:%M:%S'),
+                update_endtime=update_endtime.strftime('%Y-%m-%d %H:%M:%S')
+            )
+            msg = decode_cmd_out(ret[toolid])
+            print(msg.returncode)
+            print(msg.args)
+            print(msg.stdout)
+            print('{} ROT End {}'.format("#"*5, "#"*5))
+        return ret
+
+    def execute_r_rotmes(self, toolid, update_starttime, update_endtime):
+        measrot_data = self.eda_oracle.get_measrotdata(
+            update_starttime=update_starttime,
+            update_endtime=update_endtime
+        )
+        print('ROT Transform start Meas Candidate count {}'.format(
+            len(measrot_data)
+        ))
+
+        if len(measrot_data):
+            # run rscript
+            print('{} ROT Mea Start {}'.format("#"*5, "#"*5))
+            ret = rscript_mea(
+                r='mea.R',
+                toolid=toolid,
+                update_starttime=update_starttime.strftime('%Y-%m-%d %H:%M:%S'),
+                update_endtime=update_endtime.strftime('%Y-%m-%d %H:%M:%S')
+            )
+            msg = decode_cmd_out(ret[toolid])
+            print(msg.returncode)
+            print(msg.args)
+            print(msg.stdout.replace('\r', ''))
+            print('{} ROT Mea End {}'.format("#"*5, "#"*5))
+        return ret
 
     def get_aplastendtime(self, apname, *args, **kwargs):
         row = self.fdc_psql.get_lastendtime(
