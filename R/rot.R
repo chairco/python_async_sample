@@ -1,4 +1,4 @@
-# test.R
+# rot.R
 # Fetch command line arguments and into tlcd_rot()
 
 # if want should warnings and setting warn = 0 or options(warn = oldw)
@@ -36,12 +36,15 @@ opt = parse_args(opt_parser);
 
 if (is.null(opt$tid) || is.null(opt$start) || is.null(opt$end)){
   print_help(opt_parser)
+  psql_disconnectdb()
   stop("At least one argument must be supplied (input start and end time).\n", call.=FALSE)
 } else{
   loginfo('execute...')
   tid <- sprintf('tlcd%s', opt$tid)
   ret <- main(tid, opt$start, opt$end)
   loginfo(sprintf('ret: %s', ret))
+  loginfo('disable dbconnect')
+  psql_disconnectdb()
 }
 
 
