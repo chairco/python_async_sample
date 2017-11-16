@@ -22,7 +22,7 @@ basicConfig(level='FINEST')
 # commmand line args and test if there is at least one argument: if not, return an error
 option_list = list(
   make_option(c("-t", "--tid"), type="character", default=NULL, 
-              help="toolid, ex: 0501", metavar="character"),
+              help="toolid, ex: tlcd0501", metavar="character"),
   make_option(c("-s", "--start"), type="character", default=NULL, 
               help="start time, ex: 2017-07-13 20:00:27", metavar="character"),
   make_option(c("-e", "--end"), type="character", default=NULL, 
@@ -39,7 +39,7 @@ if (is.null(opt$tid) || is.null(opt$start) || is.null(opt$end)){
     stop("At least one argument must be supplied (input start and end time).\n", call.=FALSE)
 } else{
     loginfo('execute ROT...')
-    tid <- sprintf('tlcd%s', opt$tid)
+    tid <- sprintf('%s', opt$tid)
     ret <- main(tid, opt$start, opt$end)
     loginfo(sprintf('ret: %s', ret))
 }
