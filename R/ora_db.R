@@ -2,15 +2,18 @@
 # Query and Insert Postgresql's command
 
 # load necessary package
-library(RPostgreSQL)
+library(ROracle)
 
 # load necessary function
 source("env.R")
 
 
-con_oracle.eda <- dbConnect(dbDriver("Oracle"), username = ora.eda.username, password = ora.eda.password, dbname = ora.eda.tns)
-on.exit(dbDisconnect(con_oracle.eda, force = TRUE))
-
+drv_ora.etl_rot <- dbDriver("Oracle")
+con_oracle.etl_rot <- dbConnect(drv_ora.etl_rot, 
+    username = ora.eda.username, 
+    password = ora.eda.password, 
+    dbname = ora.eda.tns)
+#on.exit(dbDisconnect(con_oracle.etl_rot, force = TRUE))
 
 get_mearawdata <- function(update_starttime, update_endtime) {
     sql = sprintf( 
@@ -33,4 +36,10 @@ get_mearawdata <- function(update_starttime, update_endtime) {
     )
     mea.rawdata <- dbGetQuery(con_oracle.eda, sql)
     return (mea.rawdata)
+}
+
+
+ora_disconnectdb <- function() {
+    #dbDisconnect(con_oracle.etl_rot, force = TRUE)
+    on.exit(dbDisconnect(con_oracle.etl_rot, force = TRUE))
 }
