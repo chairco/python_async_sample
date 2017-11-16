@@ -291,6 +291,7 @@ main <- function(toolid, update_starttime, update_endtime) {
         # 這就會是 demo error
         conditionMessage(e)
     }, finally = {
+        loginfo('Disable dbconnect')
         psql_disconnectdb()
     })
 }

@@ -25,17 +25,17 @@ get_mearawdata <- function(update_starttime, update_endtime) {
         lcdsys.array_glass_v a,
         lcdsys.array_result_v b 
         WHERE 1=1
-        AND a.STEP_ID in ( 'DA60','1360' )
-        AND a.UPDATE_TIME >= to_date(':%s','yyyy/mm/dd hh24:mi:ss')
-        AND a.UPDATE_TIME <= to_date(':%s','yyyy/mm/dd hh24:mi:ss')
+        AND a.STEP_ID in ('DA60','1360')
+        AND a.UPDATE_TIME >= to_date('%s','yyyy-mm-dd hh24:mi:ss')
+        AND a.UPDATE_TIME <= to_date('%s','yyyy-mm-dd hh24:mi:ss')
         AND b.PARAM_NAME in ('TP_X','TP_Y')
         AND b.GLASS_ID = a.GLASS_ID
         AND b.STEP_ID = a.STEP_ID
         AND b.GLASS_START_TIME = a.GLASS_START_TIME
         ", update_starttime, update_endtime
     )
-    mea.rawdata <- dbGetQuery(con_oracle.eda, sql)
-    return (mea.rawdata)
+    mea_rawdata <- dbGetQuery(con_oracle.etl_rot, sql)
+    return (mea_rawdata)
 }
 
 

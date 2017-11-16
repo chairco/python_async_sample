@@ -31,15 +31,13 @@ tlcd_nikonrotmea_flow <- function(update_starttime, update_endtime, verbose = TR
     if (verbose) {
         loginfo("Check if there exists design values")
     }
-    break
-    return (0)
     mea_datacleaned <- clean_data(rawdata)
     
     product_list <- get_productlist(mea_datacleaned)
     prod_withdv <- get_prodwithdv()
-    prod_no_dv <- product_list[!(product_list %in% prod_with_dv)]
+    prod_no_dv <- product_list[!(product_list %in% prod_withdv)]
 
-    mea_datacleaned <- check_designvalue(mea_datacleaned, prod_withdv, product_list)
+    mea_datacleaned <- check_designvalue(mea_datacleaned, prod_withdv, product_list, prod_no_dv)
     if (nrow(mea_datacleaned) == 0) {
         logwarn(sprintf("No design values for ROT"))
         return (NULL)
@@ -77,7 +75,7 @@ tlcd_nikonrotmea_flow <- function(update_starttime, update_endtime, verbose = TR
         }
         # Check how many the glasses are in the data
         uni_comb <- unique(mea_datacleaned[, c("tstamp", "glassid")])
-        glass_count <- get_glasscount(uni_comb, mea_datacleaned, mea_dv, reshape2)
+        glass_count <- get_glasscount(uni_comb, mea_datacleaned, mea_dv, prodt)
     })
     names(rot_by_prodt) <- product_list
     rot_endtime <- Sys.time()
@@ -90,7 +88,7 @@ tlcd_nikonrotmea_flow <- function(update_starttime, update_endtime, verbose = TR
 
 clean_data <- function(rawdata) {
     loginfo('Clean data')
-    mea_datacleaned <- mea_raw_dat %>%
+    mea_datacleaned <- rawdata %>%
         arrange(GLASS_START_TIME, SITE_NAME) %>%
         mutate(tstamp = strftime(GLASS_START_TIME, format = "%Y-%m-%d %H:%M:%S"),
             product = sprintf("TL%s", substring(PARAM_COLLECTION, 5, nchar(PARAM_COLLECTION))),
@@ -109,7 +107,8 @@ get_productlist <- function(mea_datacleaned) {
 }
 
 
-check_designvalue <- function(mea_datacleaned, prod_with_dv, product_list) {
+check_designvalue <- function(mea_datacleaned, prod_withdv, product_list, prod_no_dv) {
+    loginfo('Check designvalue')
     if (length(prod_no_dv) > 0) {
         lapply(product_list[!(product_list %in% prod_withdv)], function(no_dv) {
             dat_no_dv <- mea_datacleaned %>% 
@@ -121,7 +120,13 @@ check_designvalue <- function(mea_datacleaned, prod_with_dv, product_list) {
                     paste("'", dat_no_dv[num, 1:4], "'", sep = "", collapse = ", ")
                 }), no_dv), collapse = ", ")
         
-            loginfo(inser_error(rot_error_record))     
+            if (DEBUG == FALSE) {
+                loginfo('Insert rot data.')
+                ret <- loginfo(insert_error(rot_error_record))
+                loginfo(sprintf('Return: %s', ret))
+            } else{
+                loginfo('DEBUG MODE, not insert DATA')
+            }    
         })
     }
     mea_datacleaned <- mea_datacleaned %>% filter(!(product %in% prod_no_dv))
@@ -129,25 +134,33 @@ check_designvalue <- function(mea_datacleaned, prod_with_dv, product_list) {
 }
 
 
-get_glasscount <- function(uni_comb, mea_datacleaned, mea_dv, reshape2) {
+get_glasscount <- function(uni_comb, mea_datacleaned, mea_dv, prodt) {
+    loginfo('Get glasscount')
     glass_count <- 0
     for (comb in seq(nrow(uni_comb))) {
         loginfo(comb)
         # Reformat the data
-        mea_sub_by_gid <- get_gidsub(mea_datacleaned)
+        mea_sub_by_gid <- get_gidsub(mea_datacleaned, comb, uni_comb)
         # Give the new labels
         mea_sub_by_gid_new <- mea_label_new_id(mea_sub_by_gid)
-        
+
         if (nrow(mea_sub_by_gid_new) == 0) {
             logwarn(sprintf("glassid: %s, Raw data has missing values", uni_comb$glassid[comb]))
             rot_error_record <- sprintf("(%s, -1, 'Missing Values')", 
                 paste("'", unique(mea_sub_by_gid[, 1:4]), "'", 
                     sep = "", collapse = ", "))
-            loginfo(insert_error(rot_error_record))
+            
+            if (DEBUG == FALSE) {
+                loginfo('Insert rot data.')
+                ret <- loginfo(insert_error(rot_error_record))
+                loginfo(sprintf('Return: %s', ret))
+            } else{
+                loginfo('DEBUG MODE, not insert DATA')
+            }
             return (data.frame())
         }
 
-        mea_sub_by_gid_new <- get_tpmea(mea_sub_by_gid_new)
+        mea_sub_by_gid_new <- get_tpmea(mea_sub_by_gid_new, mea_dv)
         # Long table to wide table
         Diff_X <- reshape2::dcast(mea_sub_by_gid_new[, c("tstamp", "glassid", "operation", "product", "item_id", "Diff_X")],
                                 tstamp + glassid + operation + product ~ item_id,
@@ -157,19 +170,18 @@ get_glasscount <- function(uni_comb, mea_datacleaned, mea_dv, reshape2) {
                                 value.var = "Diff_Y")
         # rot
         loginfo(sprintf("Opt_product: %s glassid: %s", prodt, Diff_X$glassid))
-
         tryCatch({
-            opt_output <- optim(c(0, 0, 0),
-                min_res_squared,
-                gr = NULL,
-                mat_x = Diff_X[, -1:-4],
-                mat_y = Diff_Y[, -1:-4],
-                mat_dx = mea_dv$x,
-                mat_dy = mea_dv$y,
+
+            opt_output <- optim(c(0, 0, 0), 
+                min_res_squared, 
+                gr = NULL, 
+                mat_x = Diff_X[, -1:-4], 
+                mat_y = Diff_Y[, -1:-4], 
+                mat_dx = mea_dv$x, 
+                mat_dy = mea_dv$y, 
                 method = "L-BFGS-B")
-            rot_log_ht_record <- sprintf("(%s, 1)", 
-                paste("'", Diff_X[, 1:4], "'", 
-                    sep = "", collapse = ", "))
+            
+            rot_log_ht_record <- sprintf("(%s, 1)", paste("'", Diff_X[, 1:4], "'", sep = "", collapse = ", "))
 
             mea_rs_x <- Diff_X[, -1:-4] + opt_output$par[1] - mea_dv$y * tan(opt_output$par[3] * 0.000001)
             colnames(mea_rs_x) <- sprintf("X_%s", seq(ncol(mea_rs_x)))
@@ -184,14 +196,30 @@ get_glasscount <- function(uni_comb, mea_datacleaned, mea_dv, reshape2) {
               select(item_name, rot_rs)
 
               rot_data_record <- paste(sprintf("(%s, (SELECT rot_id FROM insert_rot_ht))",
-                lapply(seq(nrow(mea_rs_xy_long)), function(num) 
-                    {paste("'", mea_rs_xy_long[num, c("item_name", "rot_rs")], "'", 
-                        sep = "", collapse = ", ")})),collapse = ", ")
-              loginfo(insert_error(rot_error_record))
+                lapply(seq(nrow(mea_rs_xy_long)), function(num) {
+                    paste("'", mea_rs_xy_long[num, c("item_name", "rot_rs")], "'", sep = "", collapse = ", ")
+                })), collapse = ", ")
+              
+            if (DEBUG == FALSE) {
+                loginfo('Insert rot data.')
+                ret <- loginfo(insert_error(rot_error_record))
+                loginfo(sprintf('Return: %s', ret))
+            } else{
+                loginfo('DEBUG MODE, not insert DATA')
+            }
+
         }, error = function(e) {
             logerror(sprintf("product: %s glassid: %s Error: %s", prodt, Diff_X$glassid[comb], e))
             rot_error_record <- sprintf("(%s, -4, 'ROT Error: %s')",
                 paste("'", Diff_X[, 1:4], "'", sep = "", collapse = ", "), e)
+        
+            if (DEBUG == FALSE) {
+                loginfo('Insert rot data.')
+                ret <- loginfo(insert_error(rot_error_record))
+                loginfo(sprintf('Return: %s', ret))
+            } else{
+                loginfo('DEBUG MODE, not insert DATA')
+            }
         }, finally = {
             glass_count <- glass_count + 1
         })
@@ -200,7 +228,8 @@ get_glasscount <- function(uni_comb, mea_datacleaned, mea_dv, reshape2) {
 }
 
 
-get_gidsub <- function(mea_datacleaned) {
+get_gidsub <- function(mea_datacleaned, comb, uni_comb) {
+    loginfo("Get sub gid")
     mea_sub_by_gid <- mea_datacleaned %>%
         filter(glassid == uni_comb$glassid[comb] & tstamp == uni_comb$tstamp[comb]) %>%
         select(tstamp, glassid, operation, product, site_name, x = TP_X, y = TP_Y)
@@ -208,7 +237,8 @@ get_gidsub <- function(mea_datacleaned) {
 }
 
 
-get_tpmea <- function(mea_sub_by_gid_new) {
+get_tpmea <- function(mea_sub_by_gid_new, mea_dv) {
+    loginfo("Get tpma")
     mea_sub_by_gid_new <- mea_sub_by_gid_new %>%
         select(tstamp, glassid, operation, product, item_id, TP_X = x, TP_Y = y) %>%
         full_join(mea_dv, by = "item_id") %>%
@@ -217,4 +247,19 @@ get_tpmea <- function(mea_sub_by_gid_new) {
         select(tstamp, glassid, operation, product, item_id, Diff_X, Diff_Y) %>%
         as.data.frame()
     return (mea_sub_by_gid_new)
+}
+
+
+main <- function(update_starttime, update_endtime) {
+    tryCatch({
+        #stop("demo error")
+        loginfo(sprintf("start_time: %s, end_time: %s", update_starttime, update_endtime))
+        tlcd_nikonrotmea_flow(update_starttime=update_starttime, update_endtime=update_endtime)
+    }, error = function(e) {
+        # 這就會是 demo error
+        conditionMessage(e)
+    }, finally = {
+        loginfo('Disable dbconnect')
+        ora_disconnectdb()
+    })
 }
