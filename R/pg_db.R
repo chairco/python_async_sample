@@ -14,7 +14,6 @@ con_psql.etl_rot <- dbConnect(drv_psql.etl_rot,
     dbname = psql.dbname, host = psql.host, 
     port = psql.port, user = psql.username, 
     password = psql.password)
-#on.exit(dbDisconnect(con_psql.etl_rot, force = TRUE))
 
 
 get_rawdatas <- function(toolid, update_starttime, update_endtime) {
@@ -64,8 +63,7 @@ insert_error <- function(rot_error_record) {
     sql <- sprintf(
         "
         INSERT INTO %s(%s)
-        Values
-        %s
+        Values %s
         ","tlcd_nikon_rot_log_ht", 
         "tstamp, glassid, toolid, operation, product, flag, descr", 
         rot_log_record
