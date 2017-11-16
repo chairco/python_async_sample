@@ -22,7 +22,7 @@ source("pg_db.R")
 source("basic_fun.R")
 
 
-tlcd_nikon_mea_flow <- function(update_starttime, update_endtime, verbose = TRUE) {
+tlcd_nikonrotmea_flow <- function(update_starttime, update_endtime, verbose = TRUE) {
     rawdata <- get_mearawdata(update_starttime, update_endtime)
     if (nrow(rawdata) == 0) {
         logwarn("No data to rotate")
@@ -31,7 +31,8 @@ tlcd_nikon_mea_flow <- function(update_starttime, update_endtime, verbose = TRUE
     if (verbose) {
         loginfo("Check if there exists design values")
     }
-
+    break
+    return (0)
     mea_datacleaned <- clean_data(rawdata)
     
     product_list <- get_productlist(mea_datacleaned)
@@ -88,16 +89,17 @@ tlcd_nikon_mea_flow <- function(update_starttime, update_endtime, verbose = TRUE
 
 
 clean_data <- function(rawdata) {
+    loginfo('Clean data')
     mea_datacleaned <- mea_raw_dat %>%
-    arrange(GLASS_START_TIME, SITE_NAME) %>%
-    mutate(tstamp = strftime(GLASS_START_TIME, format = "%Y-%m-%d %H:%M:%S"),
-           product = sprintf("TL%s", substring(PARAM_COLLECTION, 5, nchar(PARAM_COLLECTION))),
-           site_name = as.numeric(SITE_NAME)) %>%
-    filter(site_name <= 48) %>%
-    select(tstamp, glassid = GLASS_ID, operation = STEP_ID, product, site_name,
-           param_name = PARAM_NAME, param_value = PARAM_VALUE) %>%
-    reshape2::dcast(tstamp + glassid + operation + product + site_name ~ param_name,
-                    value.var = "param_value", fill = NA_real_)
+        arrange(GLASS_START_TIME, SITE_NAME) %>%
+        mutate(tstamp = strftime(GLASS_START_TIME, format = "%Y-%m-%d %H:%M:%S"),
+            product = sprintf("TL%s", substring(PARAM_COLLECTION, 5, nchar(PARAM_COLLECTION))),
+            site_name = as.numeric(SITE_NAME)) %>%
+        filter(site_name <= 48) %>%
+        select(tstamp, glassid = GLASS_ID, operation = STEP_ID, product, site_name,
+            param_name = PARAM_NAME, param_value = PARAM_VALUE) %>%
+        reshape2::dcast(tstamp + glassid + operation + product + site_name ~ param_name, 
+            value.var = "param_value", fill = NA_real_)
     return (mea_datacleaned)
 }
 
@@ -109,17 +111,19 @@ get_productlist <- function(mea_datacleaned) {
 
 check_designvalue <- function(mea_datacleaned, prod_with_dv, product_list) {
     if (length(prod_no_dv) > 0) {
-    lapply(product_list[!(product_list %in% prod_withdv)], function(no_dv) {
-            dat_no_dv <- mea_datacleaned %>%
-                filter(product == no_dv) %>%
-                select(tstamp, glassid, operation, product) %>%
-                unique()
-            rot_error_record <- paste(sprintf("(%s, -2, 'No Design Values in Product %s')",
-                                        lapply(seq(nrow(dat_no_dv)), function(num) {
-                                          paste("'", dat_no_dv[num, 1:4], "'", sep = "", collapse = ", ")
-                                        }), no_dv), collapse = ", ")
-        loginfo(inser_error(rot_error_record))     
-    })
+        lapply(product_list[!(product_list %in% prod_withdv)], function(no_dv) {
+            dat_no_dv <- mea_datacleaned %>% 
+                filter(product == no_dv) %>% 
+                select(tstamp, glassid, operation, product) %>% 
+                unique() 
+            rot_error_record <- paste(sprintf("(%s, -2, 'No Design Values in Product %s')", 
+                lapply(seq(nrow(dat_no_dv)), function(num) {
+                    paste("'", dat_no_dv[num, 1:4], "'", sep = "", collapse = ", ")
+                }), no_dv), collapse = ", ")
+        
+            loginfo(inser_error(rot_error_record))     
+        })
+    }
     mea_datacleaned <- mea_datacleaned %>% filter(!(product %in% prod_no_dv))
     return (mea_datacleaned)
 }
