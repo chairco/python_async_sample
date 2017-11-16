@@ -34,18 +34,18 @@ tlcd_nikonrotmea_flow <- function(update_starttime, update_endtime, verbose = TR
     if (verbose) {
         loginfo("Check if there exists design values")
     }
-    mea_datacleaned <- clean_data(rawdata)
+    mea_cleandata <- clean_data(rawdata)
     
-    product_list <- get_productlist(mea_datacleaned)
+    product_list <- get_productlist(mea_cleandata)
     prod_withdv <- get_prodwithdv()
     prod_no_dv <- product_list[!(product_list %in% prod_withdv)]
 
-    mea_datacleaned <- check_designvalue(mea_datacleaned, prod_withdv, product_list, prod_no_dv)
-    if (nrow(mea_datacleaned) == 0) {
+    mea_cleandata <- check_designvalue(mea_cleandata, prod_withdv, product_list, prod_no_dv)
+    if (nrow(mea_cleandata) == 0) {
         logwarn(sprintf("No design values for ROT"))
         return (NULL)
     }
-    product_list <- unique(mea_datacleaned$product)
+    product_list <- unique(mea_cleandata$product)
 
     rot_starttime <- Sys.time()
     loginfo(sprintf("Start %s", rot_starttime))
@@ -68,16 +68,16 @@ tlcd_nikonrotmea_flow <- function(update_starttime, update_endtime, verbose = TR
         } else{
             logwarn(sprintf("product: %s, #Distinct X * #Distinct Y != #Rows", prodt))
             rot_error_record <- paste(sprintf("(%s, -3, '''#Distinct X * #Distinct Y != #Rows'' in Product %s')", 
-                lapply(seq(nrow(unique(mea_datacleaned[, 1:4]))), function(num) {
-                    paste("'", mea_datacleaned[num, 1:4], "'", sep = "", collapse = ", ")
+                lapply(seq(nrow(unique(mea_cleandata[, 1:4]))), function(num) {
+                    paste("'", mea_cleandata[num, 1:4], "'", sep = "", collapse = ", ")
                 }), prodt), 
             collapse = ", ")
             loginfo(insert_error(rot_error_record))
             retunr (NULL)
         }
         # Check how many the glasses are in the data
-        uni_comb <- unique(mea_datacleaned[, c("tstamp", "glassid")])
-        glass_count <- get_glasscount(uni_comb, mea_datacleaned, mea_dv, prodt)
+        uni_comb <- unique(mea_cleandata[, c("tstamp", "glassid")])
+        glass_count <- get_glasscount(uni_comb, mea_cleandata, mea_dv, prodt)
     })
     names(rot_by_prodt) <- product_list
     rot_endtime <- Sys.time()
@@ -90,7 +90,7 @@ tlcd_nikonrotmea_flow <- function(update_starttime, update_endtime, verbose = TR
 
 clean_data <- function(rawdata) {
     loginfo('Clean data')
-    mea_datacleaned <- rawdata %>%
+    mea_cleandata <- rawdata %>%
         arrange(GLASS_START_TIME, SITE_NAME) %>%
         mutate(tstamp = strftime(GLASS_START_TIME, format = "%Y-%m-%d %H:%M:%S"),
             product = sprintf("TL%s", substring(PARAM_COLLECTION, 5, nchar(PARAM_COLLECTION))),
@@ -100,20 +100,20 @@ clean_data <- function(rawdata) {
             param_name = PARAM_NAME, param_value = PARAM_VALUE) %>%
         reshape2::dcast(tstamp + glassid + operation + product + site_name ~ param_name, 
             value.var = "param_value", fill = NA_real_)
-    return (mea_datacleaned)
+    return (mea_cleandata)
 }
 
 
-get_productlist <- function(mea_datacleaned) {
-    return (unique(mea_datacleaned$product))
+get_productlist <- function(mea_cleandata) {
+    return (unique(mea_cleandata$product))
 }
 
 
-check_designvalue <- function(mea_datacleaned, prod_withdv, product_list, prod_no_dv) {
+check_designvalue <- function(mea_cleandata, prod_withdv, product_list, prod_no_dv) {
     loginfo('Check designvalue')
     if (length(prod_no_dv) > 0) {
         lapply(product_list[!(product_list %in% prod_withdv)], function(no_dv) {
-            dat_no_dv <- mea_datacleaned %>% 
+            dat_no_dv <- mea_cleandata %>% 
                 filter(product == no_dv) %>% 
                 select(tstamp, glassid, operation, product) %>% 
                 unique() 
@@ -131,18 +131,18 @@ check_designvalue <- function(mea_datacleaned, prod_withdv, product_list, prod_n
             }    
         })
     }
-    mea_datacleaned <- mea_datacleaned %>% filter(!(product %in% prod_no_dv))
-    return (mea_datacleaned)
+    mea_cleandata <- mea_cleandata %>% filter(!(product %in% prod_no_dv))
+    return (mea_cleandata)
 }
 
 
-get_glasscount <- function(uni_comb, mea_datacleaned, mea_dv, prodt) {
+get_glasscount <- function(uni_comb, mea_cleandata, mea_dv, prodt) {
     loginfo('Get glasscount')
     glass_count <- 0
     for (comb in seq(nrow(uni_comb))) {
         loginfo(comb)
         # Reformat the data
-        mea_sub_by_gid <- get_gidsub(mea_datacleaned, comb, uni_comb)
+        mea_sub_by_gid <- get_gidsub(mea_cleandata, comb, uni_comb)
         # Give the new labels
         mea_sub_by_gid_new <- mea_label_new_id(mea_sub_by_gid)
 
@@ -228,9 +228,9 @@ get_glasscount <- function(uni_comb, mea_datacleaned, mea_dv, prodt) {
 }
 
 
-get_gidsub <- function(mea_datacleaned, comb, uni_comb) {
+get_gidsub <- function(mea_cleandata, comb, uni_comb) {
     loginfo("Get sub gid")
-    mea_sub_by_gid <- mea_datacleaned %>%
+    mea_sub_by_gid <- mea_cleandata %>%
         filter(glassid == uni_comb$glassid[comb] & tstamp == uni_comb$tstamp[comb]) %>%
         select(tstamp, glassid, operation, product, site_name, x = TP_X, y = TP_Y)
     return (mea_sub_by_gid)

@@ -46,28 +46,28 @@ tlcd_nikonrot_flow <- function(toolid, update_starttime, update_endtime, verbose
     }
 
     rot_cols <- get_rotcols()
-    dat_alg <- clean_data(rawdata, rot_cols)
+    cleandata_alg <- clean_data(rawdata, rot_cols)
     prod_with_dv <- get_prodwithdv()
-    product_list <- get_productlist(dat_alg)
+    product_list <- get_productlist(cleandata_alg)
     prod_no_dv <- product_list[!(product_list %in% prod_with_dv)]
-    dat_alg <- check_designvalue(dat_alg, prod_with_dv, product_list, prod_no_dv)
+    cleandata_alg <- check_designvalue(cleandata_alg, prod_with_dv, product_list, prod_no_dv)
 
-    if (nrow(dat_alg) == 0) {
+    if (nrow(cleandata_alg) == 0) {
         logwarn(sprintf("No design values for ROT"))
         return (NULL)
     }
     
-    product_list <- get_productlist(dat_alg)
+    product_list <- get_productlist(cleandata_alg)
 
     if (verbose) {
         loginfo("Check if raw data has missing data")
     }
 
-    missing_data <- get_missingdata(dat_alg)
-    dat_alg <- check_missingvalue(dat_alg, missing_data)
+    missing_data <- get_missingdata(cleandata_alg)
+    cleandata_alg <- check_missingvalue(cleandata_alg, missing_data)
 
 
-    if (nrow(dat_alg) == 0) {
+    if (nrow(cleandata_alg) == 0) {
         logwarn(sprintf("No data after removing missing values"))
         return(NULL)
     }
@@ -96,11 +96,11 @@ tlcd_nikonrot_flow <- function(toolid, update_starttime, update_endtime, verbose
         ALG_y <- grep("^plfn_al\\d[y]\\d_x", rot_cols, value = TRUE)
         ALG_y <- ALG_y[order(substring(ALG_y, 10, 10), substring(ALG_y, 8, 8))]
 
-        dat_ALG_x <- dat_alg %>% 
+        cleandata_ALG_x <- cleandata_alg %>% 
             filter(product == prodt) %>% 
             select(tstamp, glassid, toolid, operation, product, ALG_x)
 
-        dat_ALG_y <- dat_alg %>% 
+        cleandata_ALG_y <- cleandata_alg %>% 
             filter(product == prodt) %>% 
             select(tstamp, glassid, toolid, operation, product, ALG_y)
 
@@ -115,7 +115,7 @@ tlcd_nikonrot_flow <- function(toolid, update_starttime, update_endtime, verbose
         if (is.null(DV_coord)) {
             return (NULL)
         }
-        glass_count <- opt_insert(prodt, DV_coord, rot_cols, dat_ALG_x, dat_ALG_y, ALG_x, ALG_y)
+        glass_count <- opt_insert(prodt, DV_coord, rot_cols, cleandata_ALG_x, cleandata_ALG_y, ALG_x, ALG_y)
     })
 
     names(rot_by_prodt) <- product_list
@@ -128,28 +128,28 @@ tlcd_nikonrot_flow <- function(toolid, update_starttime, update_endtime, verbose
 
 clean_data <- function(rawdatas, rot_cols) {
     loginfo('Clean data')
-    dat_alg <- rawdatas %>%
+    cleandata_alg <- rawdatas %>%
         arrange(tstamp) %>%
         select(tstamp, glassid, toolid, operation, product, rot_cols) %>%
         mutate_at(rot_cols, funs(as.numeric)) %>%
         mutate(tstamp = strftime(tstamp, format = "%Y-%m-%d %H:%M:%S"))
-    return (dat_alg)
+    return (cleandata_alg)
 }
 
 
-get_productlist <- function(dat_alg) {
-    return (unique(dat_alg$product))
+get_productlist <- function(cleandata_alg) {
+    return (unique(cleandata_alg$product))
 }
 
 
-check_designvalue <- function(dat_alg, prod_with_dv, product_list, prod_no_dv) {
+check_designvalue <- function(cleandata_alg, prod_with_dv, product_list, prod_no_dv) {
     loginfo('Check designvalue')
     if (length(prod_no_dv) > 0) {
         lapply(product_list[!(product_list %in% prod_with_dv)], function(no_dv) {
-            dat_no_dv <- dat_alg %>% filter(product == no_dv) 
+            cleandata_no_dv <- cleandata_alg %>% filter(product == no_dv) 
             rot_error_record <- paste(sprintf("(%s, -2, 'No Design Values in Product %s')", 
-                lapply(seq(nrow(dat_no_dv)), function(num) {
-                    paste("'", dat_no_dv[num, 1:5], "'", sep = "", collapse = ", ")
+                lapply(seq(nrow(cleandata_no_dv)), function(num) {
+                    paste("'", cleandata_no_dv[num, 1:5], "'", sep = "", collapse = ", ")
                 }), no_dv), collapse = ", ")
             
             if (DEBUG == FALSE) {
@@ -162,26 +162,26 @@ check_designvalue <- function(dat_alg, prod_with_dv, product_list, prod_no_dv) {
         })
     }
     
-    dat_alg <- dat_alg %>% filter(!(product %in% prod_no_dv))
-    product_list <- get_productlist(dat_alg)
-    return (dat_alg)
+    cleandata_alg <- cleandata_alg %>% filter(!(product %in% prod_no_dv))
+    product_list <- get_productlist(cleandata_alg)
+    return (cleandata_alg)
 }
 
 
-get_missingdata <- function(dat_alg) {
-    missing <- data.frame(which(is.na(dat_alg), 
+get_missingdata <- function(cleandata_alg) {
+    missing <- data.frame(which(is.na(cleandata_alg), 
         arr.ind = TRUE), stringsAsFactors = FALSE)
     return (missing)
 }
 
 
-check_missingvalue <- function(dat_alg, missing_data) {
+check_missingvalue <- function(cleandata_alg, missing_data) {
     loginfo('Check missingvalue')
     if (nrow(missing_data) > 0) {
         rot_error_record <- paste(sprintf("(%s, -1, 'Missing Values in Nikon PLFN %s')",
           lapply(unique(missing_data$row), function(num) {
-            paste("'", dat_alg[num, 1:5], "'", sep = "", collapse = ", ")
-          }), paste(colnames(dat_alg)[unique(missing_data$col)], collapse = ", ")),
+            paste("'", cleandata_alg[num, 1:5], "'", sep = "", collapse = ", ")
+          }), paste(colnames(cleandata_alg)[unique(missing_data$col)], collapse = ", ")),
             collapse = ", ")
         
         if (DEBUG == FALSE) {
@@ -191,11 +191,11 @@ check_missingvalue <- function(dat_alg, missing_data) {
         } else{
             loginfo('DEBUG MODE, not insert DATA')
         }
-        dat_alg <- dat_alg[setdiff(seq(nrow(dat_alg)), unique(check_missing_data$row)), ]
-        return (dat_alg)
+        cleandata_alg <- cleandata_alg[setdiff(seq(nrow(cleandata_alg)), unique(check_missing_data$row)), ]
+        return (cleandata_alg)
     }
     loginfo('No missingValue')
-    return (dat_alg)
+    return (cleandata_alg)
 }
 
 
@@ -206,8 +206,8 @@ check_position <- function(DV_coord, prodt) {
     } else{
         logwarn(sprintf("product: %s, #Distinct X * #Distinct Y != #Rows", prodt))
         rot_error_record <- paste(sprintf("(%s, -3, '''#Distinct X * #Distinct Y != #Rows'' in Product %s')", 
-            lapply(seq(nrow(dat_ALG_x)), function(num) {
-                paste("'", dat_ALG_x[num, 1:5], "'", sep = "", collapse = ", ")
+            lapply(seq(nrow(cleandata_ALG_x)), function(num) {
+                paste("'", cleandata_ALG_x[num, 1:5], "'", sep = "", collapse = ", ")
             }), prodt), collapse = ", ")
         
         if (DEBUG == FALSE) {
@@ -224,26 +224,26 @@ check_position <- function(DV_coord, prodt) {
 }
 
 
-opt_insert <- function(prodt, DV_coord, rot_cols, dat_ALG_x, dat_ALG_y, ALG_x, ALG_y) {
+opt_insert <- function(prodt, DV_coord, rot_cols, cleandata_ALG_x, cleandata_ALG_y, ALG_x, ALG_y) {
     loginfo('Start Opt insert')
     glass_count <- 0
-    for (i in seq_along(dat_ALG_x$glassid)) {
-        loginfo(sprintf("%s: product: %s, glassid: %s", i, prodt, dat_ALG_x$glassid[i]))
+    for (i in seq_along(cleandata_ALG_x$glassid)) {
+        loginfo(sprintf("%s: product: %s, glassid: %s", i, prodt, cleandata_ALG_x$glassid[i]))
         
         tryCatch({
             opt_output <- optim(c(0, 0, 0),
                 min_res_squared,
                 gr = NULL,
-                mat_x = dat_ALG_x[i, ALG_x],
-                mat_y = dat_ALG_y[i, ALG_y],
+                mat_x = cleandata_ALG_x[i, ALG_x],
+                mat_y = cleandata_ALG_y[i, ALG_y],
                 mat_dx = DV_coord$x,
                 mat_dy = DV_coord$y,
                 method = "L-BFGS-B")
             rot_log_ht_record <- sprintf("(%s, 1)",
-                paste("'", dat_ALG_x[i, 1:5], "'", sep = "", collapse = ", "))
-            nikon_rs_x <- dat_ALG_x[i, ALG_x] + opt_output$par[1] - DV_coord$y * tan(opt_output$par[3] * 0.000001)
-            nikon_rs_y <- dat_ALG_y[i, ALG_y] + opt_output$par[2] + DV_coord$x * tan(opt_output$par[3] * 0.000001)
-            nikon_rs_xy <- cbind(glassid = dat_ALG_x$glassid[i], nikon_rs_x, nikon_rs_y)
+                paste("'", cleandata_ALG_x[i, 1:5], "'", sep = "", collapse = ", "))
+            nikon_rs_x <- cleandata_ALG_x[i, ALG_x] + opt_output$par[1] - DV_coord$y * tan(opt_output$par[3] * 0.000001)
+            nikon_rs_y <- cleandata_ALG_y[i, ALG_y] + opt_output$par[2] + DV_coord$x * tan(opt_output$par[3] * 0.000001)
+            nikon_rs_xy <- cbind(glassid = cleandata_ALG_x$glassid[i], nikon_rs_x, nikon_rs_y)
             nikon_rs_xy_long <-
               reshape2::melt(nikon_rs_xy, id.vars = c("glassid"), measure.vars = rot_cols,
                              variable.name = "item_name", value.name = "rot_rs") %>%
@@ -262,9 +262,9 @@ opt_insert <- function(prodt, DV_coord, rot_cols, dat_ALG_x, dat_ALG_y, ALG_x, A
                 loginfo('DEBUG MODE, not insert DATA')
             }
         }, error = function(e) {
-            logerror(sprintf("product: %s, glassid: %s, Error: %s", prodt, dat_ALG_x$glassid[i], e))
+            logerror(sprintf("product: %s, glassid: %s, Error: %s", prodt, cleandata_ALG_x$glassid[i], e))
             rot_error_record <- sprintf("(%s, -4, 'ROT Error: %s')", 
-                paste("'", dat_ALG_x[i, 1:5], "'", sep = "", collapse = ", "), e)
+                paste("'", cleandata_ALG_x[i, 1:5], "'", sep = "", collapse = ", "), e)
             
             if (DEBUG == FALSE) {
                 loginfo('Insert rot data.')
