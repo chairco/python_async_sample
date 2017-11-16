@@ -9,7 +9,7 @@ options(warn = -1)
 library(optparse)
 
 # load necessary function
-source("tlcd_nikonmearot.R")
+source("tlcd_nikonrot_mea.R")
 
 # setting logging
 logReset()
