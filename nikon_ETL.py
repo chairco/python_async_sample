@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 ParsedCompletedCommand = namedtuple(
     'ParsedCompletedCommand',
-    ['returncode', 'args', 'stdout', 'stderr']    
+    ['returncode', 'args', 'stdout', 'stderr']
 )
 
 
@@ -76,6 +76,7 @@ def cd(newdir):
     finally:
         os.chdir(prevdir)
 
+
 def decode_cmd_out(completed_cmd):
     try:
         stdout = completed_cmd.stdout.decode()
@@ -111,7 +112,7 @@ def rscript_rot(r, toolid, update_starttime, update_endtime):
     commands = OrderedDict([
         (toolid, [
             'RScript', r,
-            '-t', toolid, 
+            '-t', toolid,
             '-s', update_starttime,
             '-e', update_endtime
         ]),
@@ -234,15 +235,15 @@ class ETL:
                     raise e
 
             # Import data in table
-            toolids = list(set(data['TOOLID'] for data in endtime_data))
+            toolids = list(set(data['TOOLID'].lower()
+                               for data in endtime_data))
             for toolid in sorted(toolids):
-                toolid = toolid.lower()
+                #toolid = toolid.lower()
                 # check table exists or not.
                 pgclass = self.fdc_psql.get_pgclass(toolid=toolid)
                 print('Toolid: {}, pg_class count: {}'.format(toolid, pgclass))
 
                 if pgclass[0]['count']:
-
                     print('Reday to Import EDC toolid: {}'.format(toolid))
                     try:
                         print('Delete rows duplicate...')
@@ -257,37 +258,29 @@ class ETL:
                     schemacolnames = self.fdc_psql.get_schemacolnames(
                         toolid=toolid
                     )
-                    schemacolnames = [column[0].upper()
-                                      for column in schemacolnames]
+                    # schemacolnames = [column[0].upper()
+                    #                  for column in schemacolnames]
+                    schemacolnames = self.clean_schemacolnames(
+                        schemacolnames=schemacolnames
+                    )
 
                     edc_data = self.fdc_oracle.get_edcdata(
                         toolid=toolid,
                         psql_lastendtime=psql_lastendtime,
                         ora_lastendtime=ora_lastendtime
                     )
-                    edc_columns = list(edc_data[0].keys())
-
-                    column_state = self.column_state(
-                        edc=edc_columns, schema=schemacolnames)
-                    if column_state.get('ret', False):
-                        print('Column status: ret={} add={} del={}'.format(
-                            column_state.get('ret'), column_state.get('add'),
-                            column_state.get('del')
-                        ))
-                        datas = [tuple(d.values()) for d in edc_data]
+                    datas = self.clean_edcdata(
+                        edc_data=edc_data,
+                        schemacolnames=schemacolnames
+                    )
 
                     try:
-                        # should using high performance.
-                        print('Insert Count: {}'.format(len(edc_data)))
+                        # Using coroutine to add high performance.
                         for idx, values in enumerate(datas):
                             group = self.grouper(toolid=toolid)
                             next(group)
                             group.send(values)
                         group.send(None)
-                        # self.fdc_psql.save_edcdata(
-                        #    toolid=toolid,
-                        #    edcdata=data
-                        # )
                     except Exception as e:
                         raise e
 
@@ -362,7 +355,7 @@ class ETL:
                         update_starttime=update_starttime,
                         update_endtime=update_endtime
                     )
-                
+
                 measrot_data = self.eda_oracle.get_measrotdata(
                     update_starttime=update_starttime,
                     update_endtime=update_endtime
@@ -371,17 +364,17 @@ class ETL:
                     len(measrot_data)
                 ))
                 if len(measrot_data):
-                    rotmeslog = self.execute_r_rotmes(
+                    rotmeslog = self.execute_r_rotmea(
                         toolid=toolid,
                         update_starttime=update_starttime,
-                        update_endtime=update_endtime                    
+                        update_endtime=update_endtime
                     )
 
                 # TODO which sql command call to data integration??
                 try:
                     print('Refresh MTV (tlcd_nikon_mea_process_summary_mv) in the end"')
                     pass
-                    #self.fdc_psql.refresh_nikonmea()
+                    # self.fdc_psql.refresh_nikonmea()
                 except Exception as e:
                     raise e
 
@@ -389,7 +382,7 @@ class ETL:
                 try:
                     print('Update lastendtime for ROT_Transform')
                     pass
-                    #self.fdc_psql.update_lastendtime(
+                    # self.fdc_psql.update_lastendtime(
                     #    toolid=toolid,
                     #    apname=apname,
                     #    last_endtime=update_endtime
@@ -398,7 +391,7 @@ class ETL:
                 except Exception as e:
                     raise e
 
-            #TODO short term to break, should remark in product.
+            # TODO short term to break, should remark in product.
             break
 
     @logger.patch
@@ -447,7 +440,7 @@ class ETL:
     @classmethod
     def execute_r_rot(self, toolid, update_starttime, update_endtime):
         # run rscript
-        print('{} ROT Start {}'.format("#"*5, "#"*5))
+        print('{} ROT Start {}'.format("#" * 5, "#" * 5))
         ret = rscript_rot(
             r='rot.R',
             toolid=toolid,
@@ -458,13 +451,13 @@ class ETL:
         print(msg.returncode)
         print(msg.args)
         print(msg.stdout.replace('\r', ''))
-        print('{} ROT End {}'.format("#"*5, "#"*5))
+        print('{} ROT End {}'.format("#" * 5, "#" * 5))
         return ret
 
     @classmethod
-    def execute_r_rotmes(self, toolid, update_starttime, update_endtime):
+    def execute_r_rotmea(self, toolid, update_starttime, update_endtime):
         # run rscript
-        print('{} ROT Mea Start {}'.format("#"*5, "#"*5))
+        print('{0} ROT Mea Start {0}'.format("**" * 3))
         ret = rscript_mea(
             r='mea.R',
             toolid=toolid,
@@ -475,7 +468,7 @@ class ETL:
         print(msg.returncode)
         print(msg.args)
         print(msg.stdout.replace('\r', ''))
-        print('{} ROT Mea End {}'.format("#"*5, "#"*5))
+        print('{0} ROT Mea End {0}'.format("**" * 3))
         return ret
 
     def get_aplastendtime(self, apname, *args, **kwargs):
@@ -484,6 +477,23 @@ class ETL:
             apname=apname
         )
         return row
+
+    def clean_edcdata(self, edc_data, schemacolnames):
+        edc_columns = list(edc_data[0].keys())
+        column_state = self.column_state(
+            edc=edc_columns, schema=schemacolnames)
+        if column_state.get('ret', False):
+            print('Column status: ret={} add={} del={}'.format(
+                column_state.get('ret'), column_state.get('add'),
+                column_state.get('del')
+            ))
+            print('Insert Count: {}'.format(len(edc_data)))
+            datas = [tuple(d.values()) for d in edc_data]
+        return datas
+
+    def clean_schemacolnames(self, schemacolnames):
+        return [column[0].upper()
+                for column in schemacolnames]
 
     @logger.patch
     def status(self):
