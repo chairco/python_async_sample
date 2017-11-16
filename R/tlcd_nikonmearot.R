@@ -172,9 +172,6 @@ get_glasscount <- function(uni_comb, mea_datacleaned, mea_dv, prodt) {
         # rot
         loginfo(sprintf("Opt_product: %s glassid: %s", prodt, Diff_X$glassid))
         tryCatch({
-            Diff_X <- na.omit(Diff_X)
-            Diff_Y <- na.omit(Diff_Y)
-            
             opt_output <- optim(c(0, 0, 0), 
                 min_res_squared, 
                 gr = NULL, 
