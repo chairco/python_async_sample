@@ -261,11 +261,11 @@ class EdaOracle:
             a.update_time, a.product_id, a.lot_id, 
             a.equip_id, b.PARAM_COLLECTION, b.PARAM_NAME,
             b.PARAM_VALUE, b.SITE_NAME
-            FROM lcdsys.array_glass_v a, cdsys.array_result_v b 
+            FROM lcdsys.array_glass_v a, lcdsys.array_result_v b 
             WHERE 1=1
-            AND a.STEP_ID in ( 'DA60','1360' )
-            AND a.UPDATE_TIME >= to_date(':update_starttime','yyyy/mm/dd hh24:mi:ss')
-            AND a.UPDATE_TIME <= to_date(':update_endtime','yyyy/mm/dd hh24:mi:ss')
+            AND a.STEP_ID in ('DA60','1360')
+            AND a.UPDATE_TIME >= :update_starttime
+            AND a.UPDATE_TIME <= :update_endtime
             AND b.PARAM_NAME in ('TP_X','TP_Y')
             AND b.GLASS_ID = a.GLASS_ID
             AND b.STEP_ID = a.STEP_ID
