@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 import subprocess as sp
 import os
 import time
@@ -342,21 +343,43 @@ class ETL:
             print(toolids)
 
             for toolid in sorted([id.lower() for id in toolids]):
-                rotlog = self.execute_r_rot(
+                print('Candidate {} time period '
+                      'start: {}, end: {}.'.format(
+                          toolid, update_starttime, update_endtime
+                      ))
+
+                nikonrot_data = self.fdc_psql.get_nikonrot(
                     toolid=toolid,
                     update_starttime=update_starttime,
                     update_endtime=update_endtime
                 )
+                print('Candidate count: {}'.format(
+                    len(nikonrot_data)
+                ))
+                if len(nikonrot_data):
+                    rotlog = self.execute_r_rot(
+                        toolid=toolid,
+                        update_starttime=update_starttime,
+                        update_endtime=update_endtime
+                    )
                 
-                rotmeslog = self.execute_r_rotmes(
-                    toolid=toolid,
+                measrot_data = self.eda_oracle.get_measrotdata(
                     update_starttime=update_starttime,
-                    update_endtime=update_endtime                    
+                    update_endtime=update_endtime
                 )
+                print('ROT Transform start Meas Candidate count {}'.format(
+                    len(measrot_data)
+                ))
+                if len(measrot_data):
+                    rotmeslog = self.execute_r_rotmes(
+                        toolid=toolid,
+                        update_starttime=update_starttime,
+                        update_endtime=update_endtime                    
+                    )
 
                 # TODO which sql command call to data integration??
                 try:
-                    print('Refresh MTV (tlcd_nikon_mea_process_summary_mv) in the end..."')
+                    print('Refresh MTV (tlcd_nikon_mea_process_summary_mv) in the end"')
                     pass
                     #self.fdc_psql.refresh_nikonmea()
                 except Exception as e:
@@ -421,60 +444,38 @@ class ETL:
                 except Exception as e:
                     raise e
 
+    @classmethod
     def execute_r_rot(self, toolid, update_starttime, update_endtime):
-        print('Candidate {} time period '
-              'start: {}, end: {}.'.format(
-                  toolid, update_starttime, update_endtime
-              ))
-
-        nikonrot_data = self.fdc_psql.get_nikonrot(
+        # run rscript
+        print('{} ROT Start {}'.format("#"*5, "#"*5))
+        ret = rscript_rot(
+            r='rot.R',
             toolid=toolid,
-            update_starttime=update_starttime,
-            update_endtime=update_endtime
+            update_starttime=update_starttime.strftime('%Y-%m-%d %H:%M:%S'),
+            update_endtime=update_endtime.strftime('%Y-%m-%d %H:%M:%S')
         )
-        print('Candidate count: {}'.format(
-            len(nikonrot_data)
-        ))
-
-        if len(nikonrot_data):
-            # run rscript
-            print('{} ROT Start {}'.format("#"*5, "#"*5))
-            ret = rscript_rot(
-                r='rot.R',
-                toolid=toolid,
-                update_starttime=update_starttime.strftime('%Y-%m-%d %H:%M:%S'),
-                update_endtime=update_endtime.strftime('%Y-%m-%d %H:%M:%S')
-            )
-            msg = decode_cmd_out(ret[toolid])
-            print(msg.returncode)
-            print(msg.args)
-            print(msg.stdout)
-            print('{} ROT End {}'.format("#"*5, "#"*5))
+        msg = decode_cmd_out(ret[toolid])
+        print(msg.returncode)
+        print(msg.args)
+        print(msg.stdout.replace('\r', ''))
+        print('{} ROT End {}'.format("#"*5, "#"*5))
         return ret
 
+    @classmethod
     def execute_r_rotmes(self, toolid, update_starttime, update_endtime):
-        measrot_data = self.eda_oracle.get_measrotdata(
-            update_starttime=update_starttime,
-            update_endtime=update_endtime
+        # run rscript
+        print('{} ROT Mea Start {}'.format("#"*5, "#"*5))
+        ret = rscript_mea(
+            r='mea.R',
+            toolid=toolid,
+            update_starttime=update_starttime.strftime('%Y-%m-%d %H:%M:%S'),
+            update_endtime=update_endtime.strftime('%Y-%m-%d %H:%M:%S')
         )
-        print('ROT Transform start Meas Candidate count {}'.format(
-            len(measrot_data)
-        ))
-
-        if len(measrot_data):
-            # run rscript
-            print('{} ROT Mea Start {}'.format("#"*5, "#"*5))
-            ret = rscript_mea(
-                r='mea.R',
-                toolid=toolid,
-                update_starttime=update_starttime.strftime('%Y-%m-%d %H:%M:%S'),
-                update_endtime=update_endtime.strftime('%Y-%m-%d %H:%M:%S')
-            )
-            msg = decode_cmd_out(ret[toolid])
-            print(msg.returncode)
-            print(msg.args)
-            print(msg.stdout.replace('\r', ''))
-            print('{} ROT Mea End {}'.format("#"*5, "#"*5))
+        msg = decode_cmd_out(ret[toolid])
+        print(msg.returncode)
+        print(msg.args)
+        print(msg.stdout.replace('\r', ''))
+        print('{} ROT Mea End {}'.format("#"*5, "#"*5))
         return ret
 
     def get_aplastendtime(self, apname, *args, **kwargs):
