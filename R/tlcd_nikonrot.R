@@ -104,8 +104,8 @@ tlcd_nikonrot_flow <- function(toolid, update_starttime, update_endtime, verbose
             filter(product == prodt) %>% 
             select(tstamp, glassid, toolid, operation, product, ALG_y)
 
-        # reading Design values: 
-        DV_coord <- get_designvalue(prodt)
+        # reading Design values with table "tlcd_nikon_dv_ct"
+        DV_coord <- get_designvalue(prodt, "tlcd_nikon_dv_ct")
 
         if (verbose) {
             loginfo("Check the positions of Nikon design values")
@@ -228,7 +228,7 @@ opt_insert <- function(prodt, DV_coord, rot_cols, dat_ALG_x, dat_ALG_y, ALG_x, A
     loginfo('Start Opt insert')
     glass_count <- 0
     for (i in seq_along(dat_ALG_x$glassid)) {
-        loginfo(sprintf("%s: product: %s, glassid: %s]", i, prodt, dat_ALG_x$glassid[i]))
+        loginfo(sprintf("%s: product: %s, glassid: %s", i, prodt, dat_ALG_x$glassid[i]))
         
         tryCatch({
             opt_output <- optim(c(0, 0, 0),

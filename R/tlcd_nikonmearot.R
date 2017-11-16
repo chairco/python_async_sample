@@ -21,6 +21,9 @@ source("ora_db.R")
 source("pg_db.R")
 source("basic_fun.R")
 
+# setting logging
+logReset()
+basicConfig(level='FINEST')
 
 tlcd_nikonrotmea_flow <- function(update_starttime, update_endtime, verbose = TRUE) {
     rawdata <- get_mearawdata(update_starttime, update_endtime)
@@ -55,12 +58,11 @@ tlcd_nikonrotmea_flow <- function(update_starttime, update_endtime, verbose = TR
     }
 
     rot_by_prodt <- lapply(product_list, function(prodt){
-        # Reading Design value
-        mea_dv <- get_designvalue(prodt)
+        # Reading Design value with "tlcd_nikon_mea_dv_ct"
+        mea_dv <- get_designvalue(prodt, "tlcd_nikon_mea_dv_ct")
         if (verbose) {
             loginfo("Check the positions of MEA design values")
         }
-
         if (nrow(coord_checking(mea_dv)) != 0) {
             mea_dv <- coord_checking(mea_dv)
         } else{
@@ -159,7 +161,6 @@ get_glasscount <- function(uni_comb, mea_datacleaned, mea_dv, prodt) {
             }
             return (data.frame())
         }
-
         mea_sub_by_gid_new <- get_tpmea(mea_sub_by_gid_new, mea_dv)
         # Long table to wide table
         Diff_X <- reshape2::dcast(mea_sub_by_gid_new[, c("tstamp", "glassid", "operation", "product", "item_id", "Diff_X")],
@@ -171,7 +172,9 @@ get_glasscount <- function(uni_comb, mea_datacleaned, mea_dv, prodt) {
         # rot
         loginfo(sprintf("Opt_product: %s glassid: %s", prodt, Diff_X$glassid))
         tryCatch({
-
+            Diff_X <- na.omit(Diff_X)
+            Diff_Y <- na.omit(Diff_Y)
+            
             opt_output <- optim(c(0, 0, 0), 
                 min_res_squared, 
                 gr = NULL, 
@@ -180,7 +183,7 @@ get_glasscount <- function(uni_comb, mea_datacleaned, mea_dv, prodt) {
                 mat_dx = mea_dv$x, 
                 mat_dy = mea_dv$y, 
                 method = "L-BFGS-B")
-            
+
             rot_log_ht_record <- sprintf("(%s, 1)", paste("'", Diff_X[, 1:4], "'", sep = "", collapse = ", "))
 
             mea_rs_x <- Diff_X[, -1:-4] + opt_output$par[1] - mea_dv$y * tan(opt_output$par[3] * 0.000001)
