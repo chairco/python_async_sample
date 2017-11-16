@@ -12,12 +12,14 @@ oldw <- getOption("warn")
 options(warn = -1)
 
 library(dplyr)
+library(reshape2)
 library(logging)
 
 # load necessary function
+source("env.R")
 source("ora_db.R")
 source("pg_db.R")
-source("basic_fcn.R")
+source("basic_fun.R")
 
 
 tlcd_nikon_mea_flow <- function(update_starttime, update_endtime, verbose = TRUE) {
