@@ -14,7 +14,7 @@ options(warn = -1)
 library(dplyr)
 library(logging)
 
-# load nessecy function
+# load necessary function
 source("ora_db.R")
 source("pg_db.R")
 source("basic_fcn.R")

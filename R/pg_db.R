@@ -1,11 +1,11 @@
 # rot_db.R
 # Query and Insert Postgresql's command
 
-# load nessecy package
+# load necessary package
 library(RPostgreSQL)
 
 
-# load nessecy function
+# load necessary function
 source("env.R")
 
 

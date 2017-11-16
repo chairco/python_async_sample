@@ -5,14 +5,14 @@
 oldw <- getOption("warn")
 options(warn = -1)
 
-# load nessecy package
+# load necessary package
 library(optparse)
 
 # set relative path
 #PATH <- file.path(getwd(),'R')
 #setwd(PATH)
 
-# load nessecy function
+# load necessary function
 source("tlcd_nikonrot.R")
 
 # setting logging

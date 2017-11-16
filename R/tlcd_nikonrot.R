@@ -19,7 +19,7 @@ library(logging)
 #PATH <- file.path(getwd(),'R')
 #setwd(PATH)
 
-# load nessecy function
+# load necessary function
 source("env.R")
 source("pg_db.R")
 source("basic_fun.R")
