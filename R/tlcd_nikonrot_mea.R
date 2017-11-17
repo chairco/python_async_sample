@@ -1,6 +1,6 @@
 ################################################################################
-# Fucntion: tlcd_nikonrot_mea.R
 # Description: Shift and rotate the measurement data
+# Main function: tlcd_nikonrotmea_flow() 
 # Arguments:
 #   mea_raw_dat: data.frame. A data frame of measurement data in Operation '1360' and 'DA60'.
 #   verbose: logical. If TRUE the function will state procedure details.
