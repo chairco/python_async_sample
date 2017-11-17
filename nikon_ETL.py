@@ -8,7 +8,7 @@ import asyncio
 
 import lazy_logger
 
-import pandas as pd
+#import pandas as pd
 
 from dbs import nikon
 
@@ -79,13 +79,13 @@ def cd(newdir):
 
 def decode_cmd_out(completed_cmd):
     try:
-        stdout = completed_cmd.stdout.decode()
+        stdout = completed_cmd.stdout.encode('utf-8').decode()
     except AttributeError:
-        stdout = '<EMPTY>'
+        stdout = str(bytes(completed_cmd.stdout), 'big5').rstrip()
     try:
-        stderr = completed_cmd.stderr.decode()
+        stderr = completed_cmd.stderr.encode('utf-8').decode()
     except AttributeError:
-        stderr = '<EMPTY>'
+        stderr = str(bytes(completed_cmd.stderr), 'big5').rstrip()
     return ParsedCompletedCommand(
         completed_cmd.returncode,
         completed_cmd.args,
@@ -179,6 +179,7 @@ class ETL:
             row = yield
             if row is None:
                 break
+            #print('Insert: {}'.format(row))
             self.fdc_psql.save_edcdata(
                 toolid=toolid,
                 edcdata=row
@@ -237,6 +238,7 @@ class ETL:
             # Import data in table
             toolids = list(set(data['TOOLID'].lower()
                                for data in endtime_data))
+            print(toolids)
             for toolid in sorted(toolids):
                 #toolid = toolid.lower()
                 # check table exists or not.
@@ -269,20 +271,22 @@ class ETL:
                         psql_lastendtime=psql_lastendtime,
                         ora_lastendtime=ora_lastendtime
                     )
+                    print('Total Count: {}'.format(len(edc_data)))
                     datas = self.clean_edcdata(
                         edc_data=edc_data,
                         schemacolnames=schemacolnames
                     )
 
-                    try:
-                        # Using coroutine to add high performance.
-                        for idx, values in enumerate(datas):
-                            group = self.grouper(toolid=toolid)
-                            next(group)
-                            group.send(values)
-                        group.send(None)
-                    except Exception as e:
-                        raise e
+                    if len(datas) != 0:
+                        try:
+                            # Using coroutine to add high performance.
+                            for idx, values in enumerate(datas):
+                                group = self.grouper(toolid=toolid)
+                                next(group)
+                                group.send(values)
+                            group.send(None)
+                        except Exception as e:
+                            raise e
 
                 # Update last endtime.
                 try:
@@ -315,7 +319,7 @@ class ETL:
                   'ROT Transform Lastendtime: {}'.format(
                       psql_lastendtime_edc, psql_lastendtime_rot
                   ))
-
+        count = 0
         while True:
             # stop if update_starttime same.
             if update_starttime == psql_lastendtime_edc:
@@ -335,18 +339,19 @@ class ETL:
             toolids = list(chain.from_iterable(toolist))
             print(toolids)
 
+            # ROT Transform
             for toolid in sorted([id.lower() for id in toolids]):
                 print('Candidate {} time period '
                       'start: {}, end: {}.'.format(
                           toolid, update_starttime, update_endtime
                       ))
-
+                # ROT
                 nikonrot_data = self.fdc_psql.get_nikonrot(
                     toolid=toolid,
                     update_starttime=update_starttime,
                     update_endtime=update_endtime
                 )
-                print('Candidate count: {}'.format(
+                print('ROT Candidate count: {}'.format(
                     len(nikonrot_data)
                 ))
                 if len(nikonrot_data):
@@ -355,7 +360,7 @@ class ETL:
                         update_starttime=update_starttime,
                         update_endtime=update_endtime
                     )
-
+                # ROT Mea
                 measrot_data = self.eda_oracle.get_measrotdata(
                     update_starttime=update_starttime,
                     update_endtime=update_endtime
@@ -392,7 +397,10 @@ class ETL:
                     raise e
 
             # TODO short term to break, should remark in product.
-            break
+            count += 1
+            if count == 2:
+                print('Exit while loop, execute more then {} times.'.format(count))
+                break
 
     @logger.patch
     def avm(self, apname, *args, **kwargs):
@@ -440,7 +448,7 @@ class ETL:
     @classmethod
     def execute_r_rot(self, toolid, update_starttime, update_endtime):
         # run rscript
-        print('{} ROT Start {}'.format("#" * 5, "#" * 5))
+        print('{0} ROT Start {0}'.format("**" * 3))
         ret = rscript_rot(
             r='rot.R',
             toolid=toolid,
@@ -448,11 +456,10 @@ class ETL:
             update_endtime=update_endtime.strftime('%Y-%m-%d %H:%M:%S')
         )
         msg = decode_cmd_out(ret[toolid])
-        print(msg.returncode)
-        print(msg.args)
-        print(msg.stdout.replace('\r', ''))
-        print('{} ROT End {}'.format("#" * 5, "#" * 5))
-        return ret
+        print('args: {}, stdout: {}'.format(msg.args, msg.stdout.strip()))
+        print('return code: {}, stderr: {}'.format(msg.returncode, msg.stderr))
+        print('{0} ROT End {0}'.format("**" * 3))
+        return msg
 
     @classmethod
     def execute_r_rotmea(self, toolid, update_starttime, update_endtime):
@@ -465,11 +472,10 @@ class ETL:
             update_endtime=update_endtime.strftime('%Y-%m-%d %H:%M:%S')
         )
         msg = decode_cmd_out(ret[toolid])
-        print(msg.returncode)
-        print(msg.args)
-        print(msg.stdout.replace('\r', ''))
+        print('args: {}, stdout: {}'.format(msg.args, msg.stdout.strip()))
+        print('return code: {}, stderr: {}'.format(msg.returncode, msg.stderr))
         print('{0} ROT Mea End {0}'.format("**" * 3))
-        return ret
+        return msg
 
     def get_aplastendtime(self, apname, *args, **kwargs):
         row = self.fdc_psql.get_lastendtime(
@@ -479,6 +485,7 @@ class ETL:
         return row
 
     def clean_edcdata(self, edc_data, schemacolnames):
+        datas = []
         edc_columns = list(edc_data[0].keys())
         column_state = self.column_state(
             edc=edc_columns, schema=schemacolnames)
@@ -487,8 +494,8 @@ class ETL:
                 column_state.get('ret'), column_state.get('add'),
                 column_state.get('del')
             ))
-            print('Insert Count: {}'.format(len(edc_data)))
             datas = [tuple(d.values()) for d in edc_data]
+        print('Insert count: {}'.format(len(datas)))
         return datas
 
     def clean_schemacolnames(self, schemacolnames):
