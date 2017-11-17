@@ -81,11 +81,11 @@ def decode_cmd_out(completed_cmd):
     try:
         stdout = completed_cmd.stdout.encode('utf-8').decode()
     except AttributeError:
-        stdout = str(bytes(completed_cmd.stdout), 'big5').rstrip()
+        stdout = str(bytes(completed_cmd.stdout), 'big5').strip()
     try:
         stderr = completed_cmd.stderr.encode('utf-8').decode()
     except AttributeError:
-        stderr = str(bytes(completed_cmd.stderr), 'big5').rstrip()
+        stderr = str(bytes(completed_cmd.stderr), 'big5').strip()
     return ParsedCompletedCommand(
         completed_cmd.returncode,
         completed_cmd.args,
@@ -484,7 +484,7 @@ class ETL:
             update_endtime=update_endtime.strftime('%Y-%m-%d %H:%M:%S')
         )
         msg = decode_cmd_out(ret[toolid])
-        print('args: {}, stdout: {}'.format(msg.args, msg.stdout.strip()))
+        print('args: {}, stdout: {}'.format(msg.args, msg.stdout.strip('\r')))
         print('return code: {}, stderr: {}'.format(msg.returncode, msg.stderr))
         print('{0} ROT End {0}'.format("**" * 3))
         return msg
@@ -500,7 +500,7 @@ class ETL:
             update_endtime=update_endtime.strftime('%Y-%m-%d %H:%M:%S')
         )
         msg = decode_cmd_out(ret[toolid])
-        print('args: {}, stdout: {}'.format(msg.args, msg.stdout.strip()))
+        print('args: {}, stdout: {}'.format(msg.args, msg.stdout.strip('\r')))
         print('return code: {}, stderr: {}'.format(msg.returncode, msg.stderr))
         print('{0} ROT Mea End {0}'.format("**" * 3))
         return msg
