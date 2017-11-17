@@ -11,7 +11,7 @@
 oldw <- getOption("warn")
 options(warn = -1)
 
-library(dplyr)
+library(dplyr, warn.conflicts = FALSE)
 library(reshape2)
 library(logging)
 
