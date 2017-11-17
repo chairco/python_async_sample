@@ -7,7 +7,7 @@
 # Output:
 #   rot_by_prodt: list. A list contains the number of ROT glasses of each product.
 ########################################################################################
-# if want should warnings and setting warn = 0 or options(warn = oldw)
+# if want show warnings and setting warn = 0 or options(warn = oldw)
 oldw <- getOption("warn")
 options(warn = -1)
 
