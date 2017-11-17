@@ -294,11 +294,7 @@ class ETL:
                 if len(datas) != 0:
                     try:
                         # Using coroutine to add high performance.
-                        for idx, values in enumerate(datas):
-                            group = self.grouper(toolid=toolid)
-                            next(group)
-                            group.send(values)
-                        group.send(None)
+                        self.insert_main(toolid=toolid, datas=datas)
                     except Exception as e:
                         raise e
 
@@ -312,6 +308,13 @@ class ETL:
                 # )
             except Exception as e:
                 raise e
+
+    def insert_main(self, toolid, datas):
+        for idx, values in enumerate(datas):
+            group = self.grouper(toolid=toolid)
+            next(group)
+            group.send(values)
+        group.send(None)
 
     @logger.patch
     def rot(self, apname, *args, **kwargs):
