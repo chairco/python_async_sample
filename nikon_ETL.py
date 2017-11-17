@@ -239,65 +239,72 @@ class ETL:
             toolids = list(set(data['TOOLID'].lower()
                                for data in endtime_data))
             print(toolids)
-            for toolid in sorted(toolids):
-                #toolid = toolid.lower()
-                # check table exists or not.
-                pgclass = self.fdc_psql.get_pgclass(toolid=toolid)
-                print('Toolid: {}, pg_class count: {}'.format(toolid, pgclass))
+            # insert for loop
+            try:
+                etl_flow(toolids=toolids)
+            except Exception as e:
+                raise e
 
-                if pgclass[0]['count']:
-                    print('Reday to Import EDC toolid: {}'.format(toolid))
-                    try:
-                        print('Delete rows duplicate...')
-                        self.fdc_psql.delete_toolid(
-                            toolid=toolid,
-                            psql_lastendtime=psql_lastendtime,
-                            ora_lastendtime=ora_lastendtime
-                        )
-                    except Exception as e:
-                        raise e
+    def etl_flow(self, toolids):
+        for toolid in sorted(toolids):
+            #toolid = toolid.lower()
+            # check table exists or not.
+            pgclass = self.fdc_psql.get_pgclass(toolid=toolid)
+            print('Toolid: {}, pg_class count: {}'.format(toolid, pgclass))
 
-                    schemacolnames = self.fdc_psql.get_schemacolnames(
-                        toolid=toolid
-                    )
-                    # schemacolnames = [column[0].upper()
-                    #                  for column in schemacolnames]
-                    schemacolnames = self.clean_schemacolnames(
-                        schemacolnames=schemacolnames
-                    )
-
-                    edc_data = self.fdc_oracle.get_edcdata(
+            if pgclass[0]['count']:
+                print('Reday to Import EDC toolid: {}'.format(toolid))
+                try:
+                    print('Delete rows duplicate...')
+                    self.fdc_psql.delete_toolid(
                         toolid=toolid,
                         psql_lastendtime=psql_lastendtime,
                         ora_lastendtime=ora_lastendtime
                     )
-                    print('Total Count: {}'.format(len(edc_data)))
-                    datas = self.clean_edcdata(
-                        edc_data=edc_data,
-                        schemacolnames=schemacolnames
-                    )
-
-                    if len(datas) != 0:
-                        try:
-                            # Using coroutine to add high performance.
-                            for idx, values in enumerate(datas):
-                                group = self.grouper(toolid=toolid)
-                                next(group)
-                                group.send(values)
-                            group.send(None)
-                        except Exception as e:
-                            raise e
-
-                # Update last endtime.
-                try:
-                    pass
-                    # self.fdc_psql.update_lastendtime(
-                    #    toolid=self.toolid,
-                    #    apname=apname,
-                    #    last_endtime=ora_lastendtime
-                    # )
                 except Exception as e:
                     raise e
+
+                schemacolnames = self.fdc_psql.get_schemacolnames(
+                    toolid=toolid
+                )
+                # schemacolnames = [column[0].upper()
+                #                  for column in schemacolnames]
+                schemacolnames = self.clean_schemacolnames(
+                    schemacolnames=schemacolnames
+                )
+
+                edc_data = self.fdc_oracle.get_edcdata(
+                    toolid=toolid,
+                    psql_lastendtime=psql_lastendtime,
+                    ora_lastendtime=ora_lastendtime
+                )
+                print('Total Count: {}'.format(len(edc_data)))
+                datas = self.clean_edcdata(
+                    edc_data=edc_data,
+                    schemacolnames=schemacolnames
+                )
+
+                if len(datas) != 0:
+                    try:
+                        # Using coroutine to add high performance.
+                        for idx, values in enumerate(datas):
+                            group = self.grouper(toolid=toolid)
+                            next(group)
+                            group.send(values)
+                        group.send(None)
+                    except Exception as e:
+                        raise e
+
+            # Update last endtime.
+            try:
+                pass
+                # self.fdc_psql.update_lastendtime(
+                #    toolid=self.toolid,
+                #    apname=apname,
+                #    last_endtime=ora_lastendtime
+                # )
+            except Exception as e:
+                raise e
 
     @logger.patch
     def rot(self, apname, *args, **kwargs):
@@ -326,6 +333,11 @@ class ETL:
                 print('Done')
                 break
 
+            # TODO short term to break, should remark in product.
+            if count == 2:
+                print('Exit while loop, execute more then {} times.'.format(count))
+                break
+
             if (update_starttime + timedelta(seconds=86400)) < psql_lastendtime_edc:
                 update_endtime = update_starttime + timedelta(seconds=86400)
             # else:
@@ -338,69 +350,75 @@ class ETL:
             )
             toolids = list(chain.from_iterable(toolist))
             print(toolids)
+            # ROT for loop
+            try:
+                update_starttime = self.rot_flow(
+                    toolids=toolids, 
+                    update_starttime=update_starttime, 
+                    update_endtime=update_endtime
+                )
+            except Exception as e:
+                raise e
+            count += 1
 
-            # ROT Transform
-            for toolid in sorted([id.lower() for id in toolids]):
-                print('Candidate {} time period '
-                      'start: {}, end: {}.'.format(
-                          toolid, update_starttime, update_endtime
-                      ))
-                # ROT
-                nikonrot_data = self.fdc_psql.get_nikonrot(
+    def rot_flow(self, toolids, update_starttime, update_endtime):
+        # ROT Transform
+        for toolid in sorted([id.lower() for id in toolids]):
+            print('Candidate {} time period '
+                  'start: {}, end: {}.'.format(
+                      toolid, update_starttime, update_endtime
+                  ))
+            # ROT
+            nikonrot_data = self.fdc_psql.get_nikonrot(
+                toolid=toolid,
+                update_starttime=update_starttime,
+                update_endtime=update_endtime
+            )
+            print('ROT Candidate count: {}'.format(
+                len(nikonrot_data)
+            ))
+            if len(nikonrot_data):
+                rotlog = self.execute_r_rot(
                     toolid=toolid,
                     update_starttime=update_starttime,
                     update_endtime=update_endtime
                 )
-                print('ROT Candidate count: {}'.format(
-                    len(nikonrot_data)
-                ))
-                if len(nikonrot_data):
-                    rotlog = self.execute_r_rot(
-                        toolid=toolid,
-                        update_starttime=update_starttime,
-                        update_endtime=update_endtime
-                    )
-                # ROT Mea
-                measrot_data = self.eda_oracle.get_measrotdata(
+            # ROT Mea
+            measrot_data = self.eda_oracle.get_measrotdata(
+                update_starttime=update_starttime,
+                update_endtime=update_endtime
+            )
+            print('ROT Transform start Meas Candidate count {}'.format(
+                len(measrot_data)
+            ))
+            if len(measrot_data):
+                rotmeslog = self.execute_r_rotmea(
+                    toolid=toolid,
                     update_starttime=update_starttime,
                     update_endtime=update_endtime
                 )
-                print('ROT Transform start Meas Candidate count {}'.format(
-                    len(measrot_data)
-                ))
-                if len(measrot_data):
-                    rotmeslog = self.execute_r_rotmea(
-                        toolid=toolid,
-                        update_starttime=update_starttime,
-                        update_endtime=update_endtime
-                    )
 
-                # TODO which sql command call to data integration??
-                try:
-                    print('Refresh MTV (tlcd_nikon_mea_process_summary_mv) in the end"')
-                    pass
-                    # self.fdc_psql.refresh_nikonmea()
-                except Exception as e:
-                    raise e
+            # TODO which sql command call to data integration??
+            try:
+                print('Refresh MTV (tlcd_nikon_mea_process_summary_mv) in the end"')
+                pass
+                # self.fdc_psql.refresh_nikonmea()
+            except Exception as e:
+                raise e
 
-                # Update lastendtime for ROT_Transform
-                try:
-                    print('Update lastendtime for ROT_Transform')
-                    pass
-                    # self.fdc_psql.update_lastendtime(
-                    #    toolid=toolid,
-                    #    apname=apname,
-                    #    last_endtime=update_endtime
-                    #)
-                    #update_starttime = update_endtime
-                except Exception as e:
-                    raise e
-
-            # TODO short term to break, should remark in product.
-            count += 1
-            if count == 2:
-                print('Exit while loop, execute more then {} times.'.format(count))
-                break
+            # Update lastendtime for ROT_Transform and return
+            try:
+                print('Update lastendtime for ROT_Transform')
+                pass
+                # self.fdc_psql.update_lastendtime(
+                #    toolid=toolid,
+                #    apname=apname,
+                #    last_endtime=update_endtime
+                #)
+                #update_starttime = update_endtime
+            except Exception as e:
+                raise e
+        return update_starttime
 
     @logger.patch
     def avm(self, apname, *args, **kwargs):
