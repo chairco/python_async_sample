@@ -274,8 +274,6 @@ class ETL:
                 schemacolnames = self.fdc_psql.get_schemacolnames(
                     toolid=toolid
                 )
-                # schemacolnames = [column[0].upper()
-                #                  for column in schemacolnames]
                 schemacolnames = self.clean_schemacolnames(
                     schemacolnames=schemacolnames
                 )
@@ -532,13 +530,9 @@ class ETL:
 
     @logger.patch
     def status(self):
-        """
-        """
         pass
 
     def __str__(self):
-        """
-        """
         pass
 
 
