@@ -221,14 +221,10 @@ class ETL:
 
             if len(endtime_data):
                 # Add login time in all row.
-                insert_data = []
-                logintime = datetime.now()
-                for d in endtime_data:
-                    d.setdefault('LOGIN_TIME', logintime)
-                    insert_data.append(tuple(d.values()))
+                insert_data = self.clean_endtimedata(endtime_data=endtime_data)
 
                 try:
-                    pass
+                    print('Save clean data in index_glassout')
                     # self.fdc_psql.save_endtime(
                     #    endtime_data=insert_data
                     # )
@@ -241,13 +237,24 @@ class ETL:
             print(toolids)
             # insert for loop
             try:
-                etl_flow(toolids=toolids)
+                self.etl_flow(
+                    toolids=toolids,
+                    psql_lastendtime=psql_lastendtime,
+                    ora_lastendtime=ora_lastendtime
+                )
             except Exception as e:
                 raise e
 
-    def etl_flow(self, toolids):
+    def clean_endtimedata(self, endtime_data):
+        insert_data = []
+        logintime = datetime.now()
+        for d in endtime_data:
+            d.setdefault('LOGIN_TIME', logintime)
+            insert_data.append(tuple(d.values()))
+        return insert_data
+
+    def etl_flow(self, toolids, psql_lastendtime, ora_lastendtime):
         for toolid in sorted(toolids):
-            #toolid = toolid.lower()
             # check table exists or not.
             pgclass = self.fdc_psql.get_pgclass(toolid=toolid)
             print('Toolid: {}, pg_class count: {}'.format(toolid, pgclass))
@@ -353,8 +360,8 @@ class ETL:
             # ROT for loop
             try:
                 update_starttime = self.rot_flow(
-                    toolids=toolids, 
-                    update_starttime=update_starttime, 
+                    toolids=toolids,
+                    update_starttime=update_starttime,
                     update_endtime=update_endtime
                 )
             except Exception as e:
