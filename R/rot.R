@@ -5,6 +5,11 @@
 oldw <- getOption("warn")
 options(warn = -1)
 
+# setting library path in production
+if (file.exists("C:/Users/CESBG")){
+    .libPaths(c("C:/Users/CESBG/Documents/R/win-library/3.3", "C:/Program Files/R/R-3.3.1/library",.libPaths()))
+}
+
 # load necessary package
 library(optparse)
 
