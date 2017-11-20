@@ -8,8 +8,6 @@ import asyncio
 
 import lazy_logger
 
-#import pandas as pd
-
 from dbs import nikon
 
 from contextlib import contextmanager
