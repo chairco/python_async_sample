@@ -148,7 +148,7 @@ def rscript_avm(r, toolid, starttime, endtime):
 
 
 class Base:
-    """docstring for DB
+    """docstring for Base
     """
     def __init__(self):
         super(Base, self).__init__()
