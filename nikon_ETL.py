@@ -140,7 +140,9 @@ def rscript_mea(r, toolid, update_starttime, update_endtime):
 def rscript_avm(r, toolid, starttime, endtime):
     rprocess = OrderedDict()
     commands = OrderedDict([
-        (toolid, [RScript, r, starttime, endtime]),
+        (toolid, [
+            'RScript', r, starttime, endtime
+        ]),
     ])
     for cmd_name, cmd in commands.items():
         rprocess[cmd_name] = run_command_under_r_root(cmd)
