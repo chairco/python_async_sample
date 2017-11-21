@@ -147,15 +147,31 @@ def rscript_avm(r, toolid, starttime, endtime):
     return rprocess
 
 
-class ETL:
+class DBbase:
+    """docstring for DB
+    """
+    def __init__(self):
+        super(DBbase, self).__init__()
+        self.fdc_psql = nikon.FdcPGSQL()
+        self.fdc_oracle = nikon.FdcOracle()
+        self.eda_oracle = nikon.EdaOracle()
+
+
+    @classmethod
+    def get_aplastendtime(self, apname):
+        row = self.fdc_psql.get_lastendtime(
+            toolid=self.toolid,
+            apname=apname
+        )
+        return row
+
+
+class ETL(DBbase):
     """docstring for ETL
     """
 
     def __init__(self, toolid):
         super(ETL, self).__init__()
-        self.fdc_psql = nikon.FdcPGSQL()
-        self.fdc_oracle = nikon.FdcOracle()
-        self.eda_oracle = nikon.EdaOracle()
         self.toolid = toolid
 
     def column_state(self, edc, schema):
@@ -243,6 +259,7 @@ class ETL:
             except Exception as e:
                 raise e
 
+    @classmethod
     def clean_endtimedata(self, endtime_data):
         insert_data = []
         logintime = datetime.now()
@@ -501,13 +518,7 @@ class ETL:
         print('{0} ROT Mea End {0}'.format("**" * 3))
         return msg
 
-    def get_aplastendtime(self, apname, *args, **kwargs):
-        row = self.fdc_psql.get_lastendtime(
-            toolid=self.toolid,
-            apname=apname
-        )
-        return row
-
+    @classmethod
     def clean_edcdata(self, edc_data, schemacolnames):
         datas = []
         edc_columns = list(edc_data[0].keys())
@@ -522,22 +533,16 @@ class ETL:
         print('Insert count: {}'.format(len(datas)))
         return datas
 
+    @classmethod
     def clean_schemacolnames(self, schemacolnames):
         return [column[0].upper()
                 for column in schemacolnames]
-
-    @logger.patch
-    def status(self):
-        pass
-
-    def __str__(self):
-        pass
 
 
 @call_lazylog
 def etlmain(*args, **kwargs):
     etl = ETL(toolid='NIKON')
-    # etl.etl(apname='EDC_Import')
+    etl.etl(apname='EDC_Import')
     etl.rot(apname='ROT_Transform')
     # etl.avm(apname='AVM_Process')
 
