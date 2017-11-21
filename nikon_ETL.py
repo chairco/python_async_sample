@@ -150,6 +150,7 @@ def rscript_avm(r, toolid, starttime, endtime):
 class Base:
     """docstring for Base
     """
+
     def __init__(self):
         super(Base, self).__init__()
         pass
@@ -513,7 +514,8 @@ class ETL(Base):
             update_endtime=update_endtime.strftime('%Y-%m-%d %H:%M:%S')
         )
         msg = decode_cmd_out(ret[toolid])
-        print('args: {}, stdout: {}'.format(msg.args, msg.stdout.replace('\r', '')))
+        print('args: {}, stdout: {}'.format(
+            msg.args, msg.stdout.replace('\r', '')))
         print('return code: {}, stderr: {}'.format(msg.returncode, msg.stderr))
         print('{0} ROT End {0}'.format("**" * 3))
         return msg
@@ -529,7 +531,8 @@ class ETL(Base):
             update_endtime=update_endtime.strftime('%Y-%m-%d %H:%M:%S')
         )
         msg = decode_cmd_out(ret[toolid])
-        print('args: {}, stdout: {}'.format(msg.args, msg.stdout.replace('\r', '')))
+        print('args: {}, stdout: {}'.format(
+            msg.args, msg.stdout.replace('\r', '')))
         print('return code: {}, stderr: {}'.format(msg.returncode, msg.stderr))
         print('{0} ROT Mea End {0}'.format("**" * 3))
         return msg
