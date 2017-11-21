@@ -46,25 +46,6 @@ def call_lazylog(f):
     return lazylog
 
 
-def get_lastendtime(row):
-    """get lastendtime from row, get the first return.
-    :types: rows: list(dict())
-    :rtype: datatime
-    """
-    row = row[0]  # get first row
-    return row['last_end_time']
-
-
-def ckflow(row):
-    """check etl flow, if exist more than 1 row return True
-    :types: rows: list(dict())
-    :rtype: bool()
-    """
-    if len(row):
-        return True
-    return False
-
-
 @contextmanager
 def cd(newdir):
     prevdir = os.getcwd()
@@ -157,6 +138,23 @@ class Base:
         super(Base, self).__init__()
         pass
 
+    def get_lastendtime(self, row):
+        """get lastendtime from row, get the first return.
+        :types: rows: list(dict())
+        :rtype: datatime
+        """
+        row = row[0]  # get first row
+        return row['last_end_time']
+
+    def check_flow(self, row):
+        """check etl flow, if exist more than 1 row return True
+        :types: rows: list(dict())
+        :rtype: bool()
+        """
+        if len(row):
+            return True
+        return False
+
     def column_state(self, edc, schema):
         add_cols = list(set(edc) - set(schema))
         del_cols = list(set(schema) - set(edc))
@@ -238,11 +236,11 @@ class ETL(Base):
         """
         print('Nikon ETL Process Start...')
         row = self.get_aplastendtime(apname=apname)
-        etlflow = ckflow(row=row)
+        etlflow = self.check_flow(row=row)
 
         if etlflow:
             ora_lastendtime = self.fdc_oracle.get_lastendtime()[0]
-            psql_lastendtime = get_lastendtime(row=row)
+            psql_lastendtime = self.get_lastendtime(row=row)
             print('Lastendtime, Oracle:{}, PSQL:{}'.format(
                 ora_lastendtime, psql_lastendtime))
 
@@ -355,11 +353,11 @@ class ETL(Base):
         print("Nikon ETL ROT Transform Process Start...")
         row = self.get_aplastendtime(apname=apname)
         edcrow = self.get_aplastendtime(apname='EDC_Import')
-        rotflow = ckflow(row=row)
+        rotflow = self.check_flow(row=row)
 
         if rotflow:
-            psql_lastendtime_rot = get_lastendtime(row=row)
-            psql_lastendtime_edc = get_lastendtime(row=edcrow)
+            psql_lastendtime_rot = self.get_lastendtime(row=row)
+            psql_lastendtime_edc = self.get_lastendtime(row=edcrow)
             update_starttime = datetime.strptime(
                 '2017-07-13 20:00:27', '%Y-%m-%d %H:%M:%S')
             #update_starttime = psql_lastendtime_rot
@@ -469,8 +467,8 @@ class ETL(Base):
         row_rot = self.get_aplastendtime(apname='ROT_Transform')
         row_avm = self.get_aplastendtime(apname=apname)
 
-        lastendtime_rot = get_lastendtime(row=row_rot)
-        lastendtime_avm = get_lastendtime(row=row_avm)
+        lastendtime_rot = self.get_lastendtime(row=row_rot)
+        lastendtime_avm = self.get_lastendtime(row=row_avm)
 
         if lastendtime_rot > lastendtime_avm:
             starttime = lastendtime_avm
