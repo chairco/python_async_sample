@@ -167,7 +167,6 @@ class Base:
         else:
             return {'ret': True, 'add': add_cols, 'del': del_cols}
 
-    @classmethod
     def clean_endtimedata(self, endtime_data):
         insert_data = []
         logintime = datetime.now()
@@ -176,7 +175,6 @@ class Base:
             insert_data.append(tuple(d.values()))
         return insert_data
 
-    @classmethod
     def clean_edcdata(self, edc_data, schemacolnames):
         datas = []
         edc_columns = list(edc_data[0].keys())
@@ -191,7 +189,6 @@ class Base:
         print('Insert count: {}'.format(len(datas)))
         return datas
 
-    @classmethod
     def clean_schemacolnames(self, schemacolnames):
         return [column[0].upper()
                 for column in schemacolnames]
@@ -207,6 +204,13 @@ class ETL(Base):
         self.fdc_oracle = nikon.FdcOracle()
         self.eda_oracle = nikon.EdaOracle()
         self.toolid = toolid
+
+    def get_aplastendtime(self, apname):
+        row = self.fdc_psql.get_lastendtime(
+            toolid=self.toolid,
+            apname=apname
+        )
+        return row
 
     @asyncio.coroutine
     def insert(self, toolid):
@@ -497,14 +501,6 @@ class ETL(Base):
                     )
                 except Exception as e:
                     raise e
-
-    @classmethod
-    def get_aplastendtime(self, apname):
-        row = self.fdc_psql.get_lastendtime(
-            toolid=self.toolid,
-            apname=apname
-        )
-        return row
 
     @classmethod
     def execute_r_rot(self, toolid, update_starttime, update_endtime):
