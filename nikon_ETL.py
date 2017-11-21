@@ -147,32 +147,12 @@ def rscript_avm(r, toolid, starttime, endtime):
     return rprocess
 
 
-class DBbase:
+class Base:
     """docstring for DB
     """
     def __init__(self):
-        super(DBbase, self).__init__()
-        self.fdc_psql = nikon.FdcPGSQL()
-        self.fdc_oracle = nikon.FdcOracle()
-        self.eda_oracle = nikon.EdaOracle()
-
-
-    @classmethod
-    def get_aplastendtime(self, apname):
-        row = self.fdc_psql.get_lastendtime(
-            toolid=self.toolid,
-            apname=apname
-        )
-        return row
-
-
-class ETL(DBbase):
-    """docstring for ETL
-    """
-
-    def __init__(self, toolid):
-        super(ETL, self).__init__()
-        self.toolid = toolid
+        super(Base, self).__init__()
+        pass
 
     def column_state(self, edc, schema):
         add_cols = list(set(edc) - set(schema))
@@ -186,6 +166,47 @@ class ETL(DBbase):
             return {'ret': False, 'add': add_cols, 'del': del_cols}
         else:
             return {'ret': True, 'add': add_cols, 'del': del_cols}
+
+    @classmethod
+    def clean_endtimedata(self, endtime_data):
+        insert_data = []
+        logintime = datetime.now()
+        for d in endtime_data:
+            d.setdefault('LOGIN_TIME', logintime)
+            insert_data.append(tuple(d.values()))
+        return insert_data
+
+    @classmethod
+    def clean_edcdata(self, edc_data, schemacolnames):
+        datas = []
+        edc_columns = list(edc_data[0].keys())
+        column_state = self.column_state(
+            edc=edc_columns, schema=schemacolnames)
+        if column_state.get('ret', False):
+            print('Column status: ret={} add={} del={}'.format(
+                column_state.get('ret'), column_state.get('add'),
+                column_state.get('del')
+            ))
+            datas = [tuple(d.values()) for d in edc_data]
+        print('Insert count: {}'.format(len(datas)))
+        return datas
+
+    @classmethod
+    def clean_schemacolnames(self, schemacolnames):
+        return [column[0].upper()
+                for column in schemacolnames]
+
+
+class ETL(Base):
+    """docstring for ETL
+    """
+
+    def __init__(self, toolid):
+        super(ETL, self).__init__()
+        self.fdc_psql = nikon.FdcPGSQL()
+        self.fdc_oracle = nikon.FdcOracle()
+        self.eda_oracle = nikon.EdaOracle()
+        self.toolid = toolid
 
     @asyncio.coroutine
     def insert(self, toolid):
@@ -258,15 +279,6 @@ class ETL(DBbase):
                 )
             except Exception as e:
                 raise e
-
-    @classmethod
-    def clean_endtimedata(self, endtime_data):
-        insert_data = []
-        logintime = datetime.now()
-        for d in endtime_data:
-            d.setdefault('LOGIN_TIME', logintime)
-            insert_data.append(tuple(d.values()))
-        return insert_data
 
     def etl_flow(self, toolids, psql_lastendtime, ora_lastendtime):
         for toolid in sorted(toolids):
@@ -487,6 +499,14 @@ class ETL(DBbase):
                     raise e
 
     @classmethod
+    def get_aplastendtime(self, apname):
+        row = self.fdc_psql.get_lastendtime(
+            toolid=self.toolid,
+            apname=apname
+        )
+        return row
+
+    @classmethod
     def execute_r_rot(self, toolid, update_starttime, update_endtime):
         # run rscript
         print('{0} ROT Start {0}'.format("**" * 3))
@@ -517,26 +537,6 @@ class ETL(DBbase):
         print('return code: {}, stderr: {}'.format(msg.returncode, msg.stderr))
         print('{0} ROT Mea End {0}'.format("**" * 3))
         return msg
-
-    @classmethod
-    def clean_edcdata(self, edc_data, schemacolnames):
-        datas = []
-        edc_columns = list(edc_data[0].keys())
-        column_state = self.column_state(
-            edc=edc_columns, schema=schemacolnames)
-        if column_state.get('ret', False):
-            print('Column status: ret={} add={} del={}'.format(
-                column_state.get('ret'), column_state.get('add'),
-                column_state.get('del')
-            ))
-            datas = [tuple(d.values()) for d in edc_data]
-        print('Insert count: {}'.format(len(datas)))
-        return datas
-
-    @classmethod
-    def clean_schemacolnames(self, schemacolnames):
-        return [column[0].upper()
-                for column in schemacolnames]
 
 
 @call_lazylog
