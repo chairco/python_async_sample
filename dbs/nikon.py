@@ -161,7 +161,6 @@ class FdcPGSQL:
         records = ','.join(['%s'] * len(edcdata))
         cursor = db_pg.get_cursor()
         sql = 'INSERT INTO {}_rawdata VALUES ({})'.format(toolid, records)
-        print(sql)
         cursor.execute(sql, edcdata)
         db_pg.commit()
 
