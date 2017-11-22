@@ -230,6 +230,36 @@ class ETL(Base):
         while True:
             yield from self.insert(toolid=toolid)
 
+    def insert_main(self, toolid, datas):
+        for idx, values in enumerate(datas):
+            group = self.grouper(toolid=toolid)
+            next(group)
+            group.send(values)
+        group.send(None)
+
+    @asyncio.coroutine
+    def insert_endtimedata(self):
+        while True:
+            row = yield
+            if row is None:
+                break
+            #print('Insert: {}'.format(row))
+            self.fdc_psql.save_endtime(
+               endtime_data=row
+            )
+
+    @asyncio.coroutine
+    def endtimedata_grouper(self):
+        while True:
+            yield from self.insert_endtimedata()
+
+    def insert_endtimedata_main(self, datas):
+        for idx, values in enumerate(datas):
+            group = self.endtimedata_grouper()
+            next(group)
+            group.send(values)
+        group.send(None)
+
     @logger.patch
     def etl(self, apname, *args, **kwargs):
         """start etl edc import
@@ -261,13 +291,14 @@ class ETL(Base):
 
             if len(endtime_data):
                 # Add login time in all row.
-                insert_data = self.clean_endtimedata(endtime_data=endtime_data)
-
+                insert_datas = self.clean_endtimedata(endtime_data=endtime_data)
+                print('Total clean endtimedata = {}'.format(len(insert_datas)))
                 try:
                     print('Save clean data in index_glassout')
-                    # self.fdc_psql.save_endtime(
-                    #    endtime_data=insert_data
-                    # )
+                    self.insert_endtimedata_main(datas=insert_datas)
+                    #self.fdc_psql.save_endtime(
+                    #   endtime_data=insert_datas
+                    #)
                 except Exception as e:
                     raise e
 
@@ -279,13 +310,14 @@ class ETL(Base):
             try:
                 self.etl_flow(
                     toolids=toolids,
+                    apname=apname,
                     psql_lastendtime=psql_lastendtime,
                     ora_lastendtime=ora_lastendtime
                 )
             except Exception as e:
                 raise e
 
-    def etl_flow(self, toolids, psql_lastendtime, ora_lastendtime):
+    def etl_flow(self, toolids, apname, psql_lastendtime, ora_lastendtime):
         for toolid in sorted(toolids):
             # check table exists or not.
             pgclass = self.fdc_psql.get_pgclass(toolid=toolid)
@@ -330,21 +362,14 @@ class ETL(Base):
 
             # Update last endtime.
             try:
-                pass
-                # self.fdc_psql.update_lastendtime(
-                #    toolid=self.toolid,
-                #    apname=apname,
-                #    last_endtime=ora_lastendtime
-                # )
+                ret = self.fdc_psql.update_lastendtime(
+                   toolid=self.toolid,
+                   apname=apname,
+                   last_endtime=ora_lastendtime
+                )
+                print('update lastendtime: {}'.format(ret))
             except Exception as e:
                 raise e
-
-    def insert_main(self, toolid, datas):
-        for idx, values in enumerate(datas):
-            group = self.grouper(toolid=toolid)
-            next(group)
-            group.send(values)
-        group.send(None)
 
     @logger.patch
     def rot(self, apname, *args, **kwargs):
@@ -358,9 +383,9 @@ class ETL(Base):
         if rotflow:
             psql_lastendtime_rot = self.get_lastendtime(row=row)
             psql_lastendtime_edc = self.get_lastendtime(row=edcrow)
-            update_starttime = datetime.strptime(
-                '2017-07-13 20:00:27', '%Y-%m-%d %H:%M:%S')
-            #update_starttime = psql_lastendtime_rot
+            #update_starttime = datetime.strptime(
+            #    '2017-07-13 20:00:27', '%Y-%m-%d %H:%M:%S')
+            update_starttime = psql_lastendtime_rot
             update_endtime = psql_lastendtime_edc
             print('EDC Import Lastendtime: {}, '
                   'ROT Transform Lastendtime: {}'.format(
@@ -441,21 +466,22 @@ class ETL(Base):
             # TODO which sql command call to data integration??
             try:
                 print('Refresh MTV (tlcd_nikon_mea_process_summary_mv) in the end"')
-                pass
-                # self.fdc_psql.refresh_nikonmea()
+                ret = self.fdc_psql.refresh_nikonmea()
+                print(ret)
             except Exception as e:
                 raise e
 
             # Update lastendtime for ROT_Transform and return
             try:
                 print('Update lastendtime for ROT_Transform')
-                pass
-                # self.fdc_psql.update_lastendtime(
-                #    toolid=toolid,
-                #    apname=apname,
-                #    last_endtime=update_endtime
-                #)
-                #update_starttime = update_endtime
+                ret = self.fdc_psql.update_lastendtime(
+                   toolid=toolid,
+                   apname=apname,
+                   last_endtime=update_endtime
+                )
+                update_starttime = update_endtime
+                print('update_starttime = {}, '
+                      'update_endtime = {}, ret = {}'.format(update_starttime, update_endtime, ret))
             except Exception as e:
                 raise e
         return update_starttime
