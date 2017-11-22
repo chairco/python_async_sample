@@ -146,20 +146,22 @@ class FdcPGSQL:
         """Insert many rows at a times
         """
         cursor = db_pg.get_cursor()
-        cursor.executemany(
+        cursor.execute(
             """
             INSERT INTO "index_glassout"
             VALUES %(endtime_data)s
             """,
             {'endtime_data': endtime_data}
         )
+        #db_pg.commit()
 
     def save_edcdata(self, toolid, edcdata):
         """
         """
         records = ','.join(['%s'] * len(edcdata))
         cursor = db_pg.get_cursor()
-        sql = 'INSERT INTO tlcd0801_rawdata VALUES ({})'.format(records)
+        sql = 'INSERT INTO {}_rawdata VALUES ({})'.format(toolid, records)
+        print(sql)
         cursor.execute(sql, edcdata)
         db_pg.commit()
 
@@ -169,13 +171,12 @@ class FdcPGSQL:
         cursor = db_pg.get_cursor()
         cursor.execute(
             """
-            UPDATE "lastendtime"
-            SET last_endtime = %(last_endtime)s, update_time = now()
+            UPDATE lastendtime
+            SET last_end_time = %(last_endtime)s, update_time = now()
             WHERE apname = %(apname)s
             AND toolid = %(toolid)s
             """,
             {
-                "ap_lastendtimetblname": "lastendtime",
                 "last_endtime": last_endtime,
                 "apname": apname,
                 "toolid": toolid
