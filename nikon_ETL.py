@@ -195,23 +195,7 @@ class Base:
                 for column in schemacolnames]
 
 
-class ETL(Base):
-    """docstring for ETL
-    """
-
-    def __init__(self, toolid):
-        super(ETL, self).__init__()
-        self.fdc_psql = nikon.FdcPGSQL()
-        self.fdc_oracle = nikon.FdcOracle()
-        self.eda_oracle = nikon.EdaOracle()
-        self.toolid = toolid
-
-    def get_aplastendtime(self, apname):
-        row = self.fdc_psql.get_lastendtime(
-            toolid=self.toolid,
-            apname=apname
-        )
-        return row
+class BaseInsert:
 
     @asyncio.coroutine
     def insert(self, toolid):
@@ -260,6 +244,25 @@ class ETL(Base):
             group.send(values)
         group.send(None)
 
+
+class ETL(Base, BaseInsert):
+    """docstring for ETL
+    """
+
+    def __init__(self, toolid):
+        super(ETL, self).__init__()
+        self.fdc_psql = nikon.FdcPGSQL()
+        self.fdc_oracle = nikon.FdcOracle()
+        self.eda_oracle = nikon.EdaOracle()
+        self.toolid = toolid
+
+    def get_aplastendtime(self, apname):
+        row = self.fdc_psql.get_lastendtime(
+            toolid=self.toolid,
+            apname=apname
+        )
+        return row
+
     @logger.patch
     def etl(self, apname, *args, **kwargs):
         """start etl edc import
@@ -267,55 +270,59 @@ class ETL(Base):
         print('Nikon ETL Process Start...')
         row = self.get_aplastendtime(apname=apname)
         etlflow = self.check_flow(row=row)
-
         if etlflow:
             ora_lastendtime = self.fdc_oracle.get_lastendtime()[0]
             psql_lastendtime = self.get_lastendtime(row=row)
             print('Lastendtime, Oracle:{}, PSQL:{}'.format(
                 ora_lastendtime, psql_lastendtime))
+        
+        toolids = self.dbtransfer(apname=apname)
 
+        # insert for loop
+        try:
+            self.etl_flow(
+                toolids=toolids,
+                apname=apname,
+                psql_lastendtime=psql_lastendtime,
+                ora_lastendtime=ora_lastendtime
+            )
+        except Exception as e:
+            raise e
+
+    def dbtransfer(self, apname, ora_lastendtime, psql_lastendtime):
+        """start to copy table
+        """
+        print('Transfer index_glassot table from Oracle to PostgresSQL')
+        toolids = []
         # ora lastendtime new than psql lastendtime.
         if ora_lastendtime > psql_lastendtime:
-            try:
-                self.fdc_psql.delete_tlcd(
-                    psql_lastendtime=psql_lastendtime,
-                    ora_lastendtime=ora_lastendtime
-                )
-            except Exception as e:
-                raise e
-
             endtime_data = self.fdc_oracle.get_endtimedata(
                 psql_lastendtime=psql_lastendtime,
                 ora_lastendtime=ora_lastendtime
             )
-
             if len(endtime_data):
+                try:
+                    self.fdc_psql.delete_tlcd(
+                        psql_lastendtime=psql_lastendtime,
+                        ora_lastendtime=ora_lastendtime
+                    )
+                except Exception as e:
+                    raise e
                 # Add login time in all row.
                 insert_datas = self.clean_endtimedata(endtime_data=endtime_data)
                 print('Total clean endtimedata = {}'.format(len(insert_datas)))
                 try:
                     print('Save clean data in index_glassout')
                     self.insert_endtimedata_main(datas=insert_datas)
-                    #self.fdc_psql.save_endtime(
-                    #   endtime_data=insert_datas
-                    #)
                 except Exception as e:
                     raise e
 
-            # Import data in table
-            toolids = list(set(data['TOOLID'].lower()
-                               for data in endtime_data))
-            print(toolids)
-            # insert for loop
-            try:
-                self.etl_flow(
-                    toolids=toolids,
-                    apname=apname,
-                    psql_lastendtime=psql_lastendtime,
-                    ora_lastendtime=ora_lastendtime
-                )
-            except Exception as e:
-                raise e
+                # Import data in table
+                toolids = list(set(data['TOOLID'].lower()
+                                   for data in endtime_data))
+
+        print('toolids: {}.'.format(toolids))
+        return toolids
 
     def etl_flow(self, toolids, apname, psql_lastendtime, ora_lastendtime):
         for toolid in sorted(toolids):
@@ -372,12 +379,12 @@ class ETL(Base):
                 raise e
 
     @logger.patch
-    def rot(self, apname, *args, **kwargs):
+    def rot(self, apname_rot, apname_edc, *args, **kwargs):
         """start etl rot, clean data in psql
         """
         print("Nikon ETL ROT Transform Process Start...")
-        row = self.get_aplastendtime(apname=apname)
-        edcrow = self.get_aplastendtime(apname='EDC_Import')
+        row = self.get_aplastendtime(apname=apname_rot)
+        edcrow = self.get_aplastendtime(apname=apname_edc)
         rotflow = self.check_flow(row=row)
 
         if rotflow:
@@ -391,6 +398,7 @@ class ETL(Base):
                   'ROT Transform Lastendtime: {}'.format(
                       psql_lastendtime_edc, psql_lastendtime_rot
                   ))
+        
         count = 0
         while True:
             # stop if update_starttime same.
@@ -568,7 +576,7 @@ class ETL(Base):
 def etlmain(*args, **kwargs):
     etl = ETL(toolid='NIKON')
     etl.etl(apname='EDC_Import')
-    etl.rot(apname='ROT_Transform')
+    # etl.rot(apname_rot='ROT_Transform', apname_edc='EDC_Import')
     # etl.avm(apname='AVM_Process')
 
 
