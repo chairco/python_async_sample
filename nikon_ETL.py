@@ -448,7 +448,7 @@ class ETL(Base, BaseInsert):
             print('Update ROT_Transform lastendtime')
             self.fdc_psql.update_lastendtime(
                 toolid=self.toolid,
-                apname=self.apname,
+                apname=apname_rot,
                 last_endtime=update_endtime
             )
         except Exception as e:
