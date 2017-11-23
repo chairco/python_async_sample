@@ -181,13 +181,13 @@ class Base:
         edc_columns = list(edc_data[0].keys())
         column_state = self.column_state(
             edc=edc_columns, schema=schemacolnames)
+        print('Check column status: ret={} add={} del={}'.format(
+            column_state.get('ret'), column_state.get('add'),
+            column_state.get('del')
+        ))
         if column_state.get('ret', False):
-            print('Column status: ret={} add={} del={}'.format(
-                column_state.get('ret'), column_state.get('add'),
-                column_state.get('del')
-            ))
             datas = [tuple(d.values()) for d in edc_data]
-        print('Insert count: {}'.format(len(datas)))
+        print('Insert clean_edcdata Count: {}'.format(len(datas)))
         return datas
 
     def clean_schemacolnames(self, schemacolnames):
@@ -295,7 +295,7 @@ class ETL(Base, BaseInsert):
 
         # Update Nikon lastendtime.
         try:
-            print('Update Nikon lastendtime: {}'.format(ret))
+            print('Update Nikon lastendtime')
             #ret = self.fdc_psql.update_lastendtime(
             #   toolid=self.toolid,
             #   apname=apname,
@@ -331,6 +331,7 @@ class ETL(Base, BaseInsert):
                 try:
                     print('Save interval cleandata into index_glassout')
                     self.insert_endtimedata_main(datas=insert_datas)
+                    print('Done')
                 except Exception as e:
                     raise e
 
@@ -338,7 +339,7 @@ class ETL(Base, BaseInsert):
                 toolids = list(set(data['TOOLID'].lower()
                                    for data in endtime_data))
 
-        print('toolids: {}.'.format(toolids))
+        print('Toolids: {}.'.format(toolids))
         return toolids
 
     def tlcd_flow(self, toolids, apname, psql_lastendtime, ora_lastendtime):
@@ -362,7 +363,7 @@ class ETL(Base, BaseInsert):
                     psql_lastendtime=psql_lastendtime,
                     ora_lastendtime=ora_lastendtime
                 )
-                print('Total Count: {}'.format(len(edc_data)))
+                print('Total {} Count: {}'.format(toolid, len(edc_data)))
                 datas = self.clean_edcdata(
                     edc_data=edc_data,
                     schemacolnames=schemacolnames
@@ -370,17 +371,19 @@ class ETL(Base, BaseInsert):
 
                 if len(datas) != 0:
                     try:
-                        print('Delete interbal tlcd rows duplicate...')
+                        print('Delete interval tlcd rows duplicate...')
                         self.fdc_psql.delete_toolid(
                             toolid=toolid,
                             psql_lastendtime=psql_lastendtime,
                             ora_lastendtime=ora_lastendtime
                         )
-                        print('Insert tlcd row')
+                        print('Insert {} row'.format(toolid))
                         # Using coroutine to add high performance.
                         self.insert_main(toolid=toolid, datas=datas)
+                        print('Done')
                     except Exception as e:
                         raise e
+            print('Next toolid')
 
     @logger.patch
     def rot(self, apname_rot, apname_edc, *args, **kwargs):
@@ -440,7 +443,7 @@ class ETL(Base, BaseInsert):
 
         # Update lastendtime for ROT_Transform and return
         try:
-            print('Update lastendtime for ROT_Transform')
+            print('Update ROT_Transform lastendtime')
             #ret = self.fdc_psql.update_lastendtime(
             #   toolid=toolid,
             #   apname=apname,
@@ -489,10 +492,10 @@ class ETL(Base, BaseInsert):
             # TODO which sql command call to data integration??
             try:
                 print('Refresh MTV (tlcd_nikon_mea_process_summary_mv) in the end"')
-                ret = self.fdc_psql.refresh_nikonmea()
-                print(ret)
+                self.fdc_psql.refresh_nikonmea()
             except Exception as e:
                 raise e
+        return(update_endtime)
 
     @logger.patch
     def avm(self, apname, *args, **kwargs):
