@@ -280,7 +280,7 @@ class ETL(Base, BaseInsert):
 
         # insert for loop
         try:
-            self.etl_flow(
+            self.tlcd_flow(
                 toolids=toolids,
                 apname=apname,
                 psql_lastendtime=psql_lastendtime,
@@ -290,7 +290,7 @@ class ETL(Base, BaseInsert):
             raise e
 
     def dbtransfer(self, apname, ora_lastendtime, psql_lastendtime):
-        """start to copy table
+        """start to copy index_glassout table
         """
         print('Transfer index_glassot table from Oracle to PostgresSQL')
         toolids = []
@@ -302,17 +302,19 @@ class ETL(Base, BaseInsert):
             )
             if len(endtime_data):
                 try:
+                    print('Delete interval index_glassot rows')
                     self.fdc_psql.delete_tlcd(
                         psql_lastendtime=psql_lastendtime,
                         ora_lastendtime=ora_lastendtime
                     )
                 except Exception as e:
                     raise e
-                # Add login time in all row.
+                
+                # Add logintime in all row.
                 insert_datas = self.clean_endtimedata(endtime_data=endtime_data)
                 print('Total clean endtimedata = {}'.format(len(insert_datas)))
                 try:
-                    print('Save clean data in index_glassout')
+                    print('Save interval cleandata into index_glassout')
                     self.insert_endtimedata_main(datas=insert_datas)
                 except Exception as e:
                     raise e
@@ -324,7 +326,9 @@ class ETL(Base, BaseInsert):
         print('toolids: {}.'.format(toolids))
         return toolids
 
-    def etl_flow(self, toolids, apname, psql_lastendtime, ora_lastendtime):
+    def tlcd_flow(self, toolids, apname, psql_lastendtime, ora_lastendtime):
+        """start to copy tlcd table
+        """
         for toolid in sorted(toolids):
             # check table exists or not.
             pgclass = self.fdc_psql.get_pgclass(toolid=toolid)
@@ -332,23 +336,12 @@ class ETL(Base, BaseInsert):
 
             if pgclass[0]['count']:
                 print('Reday to Import EDC toolid: {}'.format(toolid))
-                try:
-                    print('Delete rows duplicate...')
-                    self.fdc_psql.delete_toolid(
-                        toolid=toolid,
-                        psql_lastendtime=psql_lastendtime,
-                        ora_lastendtime=ora_lastendtime
-                    )
-                except Exception as e:
-                    raise e
-
                 schemacolnames = self.fdc_psql.get_schemacolnames(
                     toolid=toolid
                 )
                 schemacolnames = self.clean_schemacolnames(
                     schemacolnames=schemacolnames
                 )
-
                 edc_data = self.fdc_oracle.get_edcdata(
                     toolid=toolid,
                     psql_lastendtime=psql_lastendtime,
@@ -362,6 +355,13 @@ class ETL(Base, BaseInsert):
 
                 if len(datas) != 0:
                     try:
+                        print('Delete interbal tlcd rows duplicate...')
+                        self.fdc_psql.delete_toolid(
+                            toolid=toolid,
+                            psql_lastendtime=psql_lastendtime,
+                            ora_lastendtime=ora_lastendtime
+                        )
+                        print('Insert tlcd row')
                         # Using coroutine to add high performance.
                         self.insert_main(toolid=toolid, datas=datas)
                     except Exception as e:
