@@ -229,7 +229,7 @@ class BaseInsert:
                 break
             #print('Insert: {}'.format(row))
             self.fdc_psql.save_endtime(
-               endtime_data=row
+                endtime_data=row
             )
 
     @asyncio.coroutine
@@ -275,7 +275,7 @@ class ETL(Base, BaseInsert):
             psql_lastendtime = self.get_lastendtime(row=row)
             print('Lastendtime, Oracle:{}, PSQL:{}'.format(
                 ora_lastendtime, psql_lastendtime))
-        
+
         toolids = self.dbtransfer(
             apname=apname,
             ora_lastendtime=ora_lastendtime,
@@ -296,11 +296,11 @@ class ETL(Base, BaseInsert):
         # Update Nikon lastendtime.
         try:
             print('Update Nikon lastendtime')
-            #ret = self.fdc_psql.update_lastendtime(
-            #   toolid=self.toolid,
-            #   apname=apname,
-            #   last_endtime=ora_lastendtime
-            #)
+            self.fdc_psql.update_lastendtime(
+                toolid=self.toolid,
+                apname=apname,
+                last_endtime=ora_lastendtime
+            )
         except Exception as e:
             raise e
 
@@ -324,10 +324,12 @@ class ETL(Base, BaseInsert):
                     )
                 except Exception as e:
                     raise e
-                
+
                 # Add logintime in all row.
-                insert_datas = self.clean_endtimedata(endtime_data=endtime_data)
-                print('Total interval cleandata count= {}'.format(len(insert_datas)))
+                insert_datas = self.clean_endtimedata(
+                    endtime_data=endtime_data)
+                print('Total interval cleandata count= {}'.format(
+                    len(insert_datas)))
                 try:
                     print('Save interval cleandata into index_glassout')
                     self.insert_endtimedata_main(datas=insert_datas)
@@ -397,8 +399,8 @@ class ETL(Base, BaseInsert):
         if rotflow:
             psql_lastendtime_rot = self.get_lastendtime(row=row)
             psql_lastendtime_edc = self.get_lastendtime(row=edcrow)
-            #update_starttime = datetime.strptime(
-            #    '2017-07-13 20:00:27', '%Y-%m-%d %H:%M:%S')
+            # test: update_starttime = datetime.strptime('2017-07-13 20:00:27',
+            # '%Y-%m-%d %H:%M:%S')
             update_starttime = psql_lastendtime_rot
             update_endtime = psql_lastendtime_edc
             print('EDC Import Lastendtime: {}, '
@@ -429,7 +431,7 @@ class ETL(Base, BaseInsert):
             )
             toolids = list(chain.from_iterable(toolist))
             print(toolids)
-            
+
             # ROT for loop
             try:
                 update_starttime = self.rot_flow(
@@ -444,11 +446,11 @@ class ETL(Base, BaseInsert):
         # Update lastendtime for ROT_Transform and return
         try:
             print('Update ROT_Transform lastendtime')
-            #ret = self.fdc_psql.update_lastendtime(
-            #   toolid=toolid,
-            #   apname=apname,
-            #   last_endtime=update_endtime
-            #)
+            self.fdc_psql.update_lastendtime(
+                toolid=self.toolid,
+                apname=self.apname,
+                last_endtime=update_endtime
+            )
         except Exception as e:
             raise e
 
