@@ -276,9 +276,13 @@ class ETL(Base, BaseInsert):
             print('Lastendtime, Oracle:{}, PSQL:{}'.format(
                 ora_lastendtime, psql_lastendtime))
         
-        toolids = self.dbtransfer(apname=apname)
+        toolids = self.dbtransfer(
+            apname=apname,
+            ora_lastendtime=ora_lastendtime,
+            psql_lastendtime=psql_lastendtime
+        )
 
-        # insert for loop
+        # Insert for loop
         try:
             self.tlcd_flow(
                 toolids=toolids,
@@ -286,6 +290,17 @@ class ETL(Base, BaseInsert):
                 psql_lastendtime=psql_lastendtime,
                 ora_lastendtime=ora_lastendtime
             )
+        except Exception as e:
+            raise e
+
+        # Update Nikon lastendtime.
+        try:
+            print('Update Nikon lastendtime: {}'.format(ret))
+            #ret = self.fdc_psql.update_lastendtime(
+            #   toolid=self.toolid,
+            #   apname=apname,
+            #   last_endtime=ora_lastendtime
+            #)
         except Exception as e:
             raise e
 
@@ -312,7 +327,7 @@ class ETL(Base, BaseInsert):
                 
                 # Add logintime in all row.
                 insert_datas = self.clean_endtimedata(endtime_data=endtime_data)
-                print('Total clean endtimedata = {}'.format(len(insert_datas)))
+                print('Total interval cleandata count= {}'.format(len(insert_datas)))
                 try:
                     print('Save interval cleandata into index_glassout')
                     self.insert_endtimedata_main(datas=insert_datas)
@@ -367,17 +382,6 @@ class ETL(Base, BaseInsert):
                     except Exception as e:
                         raise e
 
-            # Update last endtime.
-            try:
-                ret = self.fdc_psql.update_lastendtime(
-                   toolid=self.toolid,
-                   apname=apname,
-                   last_endtime=ora_lastendtime
-                )
-                print('update lastendtime: {}'.format(ret))
-            except Exception as e:
-                raise e
-
     @logger.patch
     def rot(self, apname_rot, apname_edc, *args, **kwargs):
         """start etl rot, clean data in psql
@@ -398,7 +402,6 @@ class ETL(Base, BaseInsert):
                   'ROT Transform Lastendtime: {}'.format(
                       psql_lastendtime_edc, psql_lastendtime_rot
                   ))
-        
         count = 0
         while True:
             # stop if update_starttime same.
@@ -423,6 +426,7 @@ class ETL(Base, BaseInsert):
             )
             toolids = list(chain.from_iterable(toolist))
             print(toolids)
+            
             # ROT for loop
             try:
                 update_starttime = self.rot_flow(
@@ -433,6 +437,17 @@ class ETL(Base, BaseInsert):
             except Exception as e:
                 raise e
             count += 1
+
+        # Update lastendtime for ROT_Transform and return
+        try:
+            print('Update lastendtime for ROT_Transform')
+            #ret = self.fdc_psql.update_lastendtime(
+            #   toolid=toolid,
+            #   apname=apname,
+            #   last_endtime=update_endtime
+            #)
+        except Exception as e:
+            raise e
 
     def rot_flow(self, toolids, update_starttime, update_endtime):
         # ROT Transform
@@ -478,21 +493,6 @@ class ETL(Base, BaseInsert):
                 print(ret)
             except Exception as e:
                 raise e
-
-            # Update lastendtime for ROT_Transform and return
-            try:
-                print('Update lastendtime for ROT_Transform')
-                ret = self.fdc_psql.update_lastendtime(
-                   toolid=toolid,
-                   apname=apname,
-                   last_endtime=update_endtime
-                )
-                update_starttime = update_endtime
-                print('update_starttime = {}, '
-                      'update_endtime = {}, ret = {}'.format(update_starttime, update_endtime, ret))
-            except Exception as e:
-                raise e
-        return update_starttime
 
     @logger.patch
     def avm(self, apname, *args, **kwargs):
