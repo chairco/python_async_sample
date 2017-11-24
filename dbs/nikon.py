@@ -181,6 +181,7 @@ class FdcPGSQL:
                 "toolid": toolid
             }
         )
+        db_pg.commit()
 
     def refresh_nikonmea(self):
         """
