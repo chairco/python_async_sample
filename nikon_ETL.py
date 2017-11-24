@@ -17,7 +17,6 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-
 ParsedCompletedCommand = namedtuple(
     'ParsedCompletedCommand',
     ['returncode', 'args', 'stdout', 'stderr']
@@ -196,14 +195,13 @@ class Base:
 
 
 class BaseInsert:
-
     @asyncio.coroutine
     def insert(self, toolid):
         while True:
             row = yield
             if row is None:
                 break
-            #print('Insert: {}'.format(row))
+            # print('Insert: {}'.format(row))
             self.fdc_psql.save_edcdata(
                 toolid=toolid,
                 edcdata=row
@@ -227,7 +225,7 @@ class BaseInsert:
             row = yield
             if row is None:
                 break
-            #print('Insert: {}'.format(row))
+            # print('Insert: {}'.format(row))
             self.fdc_psql.save_endtime(
                 endtime_data=row
             )
@@ -295,7 +293,7 @@ class ETL(Base, BaseInsert):
 
         # Update Nikon lastendtime.
         try:
-            print('Update Nikon lastendtime')
+            print('Update {} lastendtime, apname {}'.format(self.toolid, apname))
             self.fdc_psql.update_lastendtime(
                 toolid=self.toolid,
                 apname=apname,
@@ -326,10 +324,8 @@ class ETL(Base, BaseInsert):
                     raise e
 
                 # Add logintime in all row.
-                insert_datas = self.clean_endtimedata(
-                    endtime_data=endtime_data)
-                print('Total interval cleandata count= {}'.format(
-                    len(insert_datas)))
+                insert_datas = self.clean_endtimedata(endtime_data=endtime_data)
+                print('Total interval cleandata count= {}'.format(len(insert_datas)))
                 try:
                     print('Save interval cleandata into index_glassout')
                     self.insert_endtimedata_main(datas=insert_datas)
@@ -347,45 +343,47 @@ class ETL(Base, BaseInsert):
     def tlcd_flow(self, toolids, apname, psql_lastendtime, ora_lastendtime):
         """start to copy tlcd table
         """
-        for toolid in sorted(toolids):
-            # check table exists or not.
-            pgclass = self.fdc_psql.get_pgclass(toolid=toolid)
-            print('Toolid: {}, pg_class count: {}'.format(toolid, pgclass))
+        # ora lastendtime new than psql lastendtime.
+        if ora_lastendtime > psql_lastendtime:
+            for toolid in sorted(toolids):
+                # check table exists or not.
+                pgclass = self.fdc_psql.get_pgclass(toolid=toolid)
+                print('Toolid: {}, pg_class count: {}'.format(toolid, pgclass))
 
-            if pgclass[0]['count']:
-                print('Reday to Import EDC toolid: {}'.format(toolid))
-                schemacolnames = self.fdc_psql.get_schemacolnames(
-                    toolid=toolid
-                )
-                schemacolnames = self.clean_schemacolnames(
-                    schemacolnames=schemacolnames
-                )
-                edc_data = self.fdc_oracle.get_edcdata(
-                    toolid=toolid,
-                    psql_lastendtime=psql_lastendtime,
-                    ora_lastendtime=ora_lastendtime
-                )
-                print('Total {} Count: {}'.format(toolid, len(edc_data)))
-                datas = self.clean_edcdata(
-                    edc_data=edc_data,
-                    schemacolnames=schemacolnames
-                )
+                if pgclass[0]['count']:
+                    print('Reday to Import EDC toolid: {}'.format(toolid))
+                    schemacolnames = self.fdc_psql.get_schemacolnames(
+                        toolid=toolid
+                    )
+                    schemacolnames = self.clean_schemacolnames(
+                        schemacolnames=schemacolnames
+                    )
+                    edc_data = self.fdc_oracle.get_edcdata(
+                        toolid=toolid,
+                        psql_lastendtime=psql_lastendtime,
+                        ora_lastendtime=ora_lastendtime
+                    )
+                    print('Total {} Count: {}'.format(toolid, len(edc_data)))
+                    datas = self.clean_edcdata(
+                        edc_data=edc_data,
+                        schemacolnames=schemacolnames
+                    )
 
-                if len(datas) != 0:
-                    try:
-                        print('Delete interval tlcd rows duplicate...')
-                        self.fdc_psql.delete_toolid(
-                            toolid=toolid,
-                            psql_lastendtime=psql_lastendtime,
-                            ora_lastendtime=ora_lastendtime
-                        )
-                        print('Insert {} row'.format(toolid))
-                        # Using coroutine to add high performance.
-                        self.insert_main(toolid=toolid, datas=datas)
-                        print('Done')
-                    except Exception as e:
-                        raise e
-            print('Next toolid')
+                    if len(datas) != 0:
+                        try:
+                            print('Delete interval tlcd rows duplicate...')
+                            self.fdc_psql.delete_toolid(
+                                toolid=toolid,
+                                psql_lastendtime=psql_lastendtime,
+                                ora_lastendtime=ora_lastendtime
+                            )
+                            print('Insert {} row'.format(toolid))
+                            # Using coroutine to add high performance.
+                            self.insert_main(toolid=toolid, datas=datas)
+                            print('Done')
+                        except Exception as e:
+                            raise e
+                print('Next toolid')
 
     @logger.patch
     def rot(self, apname_rot, apname_edc, *args, **kwargs):
@@ -399,30 +397,35 @@ class ETL(Base, BaseInsert):
         if rotflow:
             psql_lastendtime_rot = self.get_lastendtime(row=row)
             psql_lastendtime_edc = self.get_lastendtime(row=edcrow)
-            # test: update_starttime = datetime.strptime('2017-07-13 20:00:27',
-            # '%Y-%m-%d %H:%M:%S')
+            #update_starttime = datetime.strptime('2017-11-16 08:45:00', '%Y-%m-%d %H:%M:%S')
             update_starttime = psql_lastendtime_rot
             update_endtime = psql_lastendtime_edc
             print('EDC Import Lastendtime: {}, '
-                  'ROT Transform Lastendtime: {}'.format(
-                      psql_lastendtime_edc, psql_lastendtime_rot
-                  ))
+                  'ROT Transform Lastendtime: {}, '
+                  'Update start time: {}, '
+                  'Update end time: {}.'.format(
+                psql_lastendtime_edc, psql_lastendtime_rot,
+                update_starttime, update_endtime
+            ))
         count = 0
         while True:
             # stop if update_starttime same.
             if update_starttime == psql_lastendtime_edc:
-                print('Done')
+                print('Update starttime = psql lastendtime, Done')
                 break
 
             # TODO short term to break, should remark in product.
-            if count == 2:
+            if count == 30:
                 print('Exit while loop, execute more then {} times.'.format(count))
                 break
 
             if (update_starttime + timedelta(seconds=86400)) < psql_lastendtime_edc:
                 update_endtime = update_starttime + timedelta(seconds=86400)
-            # else:
-            #    update_endtime = psql_lastendtime_edc
+            else:
+                update_endtime = psql_lastendtime_edc
+
+            print('Update Start Time: {}, '
+                  'Update End Time: {}.'.format(update_starttime, update_endtime))
 
             # Get candidates of toolist
             toolist = self.fdc_psql.get_toolid(
@@ -459,8 +462,8 @@ class ETL(Base, BaseInsert):
         for toolid in sorted([id.lower() for id in toolids]):
             print('Candidate {} time period '
                   'start: {}, end: {}.'.format(
-                      toolid, update_starttime, update_endtime
-                  ))
+                toolid, update_starttime, update_endtime
+            ))
             # ROT
             nikonrot_data = self.fdc_psql.get_nikonrot(
                 toolid=toolid,
@@ -497,7 +500,7 @@ class ETL(Base, BaseInsert):
                 self.fdc_psql.refresh_nikonmea()
             except Exception as e:
                 raise e
-        return(update_endtime)
+        return (update_endtime)
 
     @logger.patch
     def avm(self, apname, *args, **kwargs):
@@ -581,7 +584,7 @@ class ETL(Base, BaseInsert):
 def etlmain(*args, **kwargs):
     etl = ETL(toolid='NIKON')
     etl.etl(apname='EDC_Import')
-    # etl.rot(apname_rot='ROT_Transform', apname_edc='EDC_Import')
+    etl.rot(apname_rot='ROT_Transform', apname_edc='EDC_Import')
     # etl.avm(apname='AVM_Process')
 
 
