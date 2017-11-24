@@ -76,7 +76,7 @@ tlcd_nikonrotmea_flow <- function(update_starttime, update_endtime, verbose = TR
                     paste("'", mea_cleandata[num, 1:4], "'", sep = "", collapse = ", ")
                 }), prodt), 
             collapse = ", ")
-            loginfo(insert_error(rot_error_record))
+            loginfo(insert_error_mea(rot_error_record))
             retunr (NULL)
         }
         # Check how many the glasses are in the data
@@ -128,7 +128,7 @@ check_designvalue <- function(mea_cleandata, prod_withdv, product_list, prod_no_
         
             if (DEBUG == FALSE) {
                 loginfo('Insert rot data.')
-                ret <- loginfo(insert_error(rot_error_record))
+                ret <- loginfo(insert_error_mea(rot_error_record))
                 loginfo(sprintf('Return: %s', ret))
             } else{
                 loginfo('DEBUG MODE, not insert DATA')
@@ -157,7 +157,7 @@ get_glasscount <- function(uni_comb, mea_cleandata, mea_dv, prodt) {
             
             if (DEBUG == FALSE) {
                 loginfo('Insert rot data.')
-                ret <- loginfo(insert_error(rot_error_record))
+                ret <- loginfo(insert_error_mea(rot_error_record))
                 loginfo(sprintf('Return: %s', ret))
             } else{
                 loginfo('DEBUG MODE, not insert DATA')
@@ -203,7 +203,7 @@ get_glasscount <- function(uni_comb, mea_cleandata, mea_dv, prodt) {
               
             if (DEBUG == FALSE) {
                 loginfo('Insert rot data.')
-                ret <- loginfo(insert_error(rot_error_record))
+                ret <- loginfo(insert_error_mea(rot_error_record))
                 loginfo(sprintf('Return: %s', ret))
             } else{
                 loginfo('DEBUG MODE, not insert DATA')
@@ -215,7 +215,7 @@ get_glasscount <- function(uni_comb, mea_cleandata, mea_dv, prodt) {
                 paste("'", Diff_X[, 1:4], "'", sep = "", collapse = ", "), e)
             if (DEBUG == FALSE) {
                 loginfo('Insert rot data.')
-                ret <- loginfo(insert_error(rot_error_record))
+                ret <- loginfo(insert_error_mea(rot_error_record))
                 loginfo(sprintf('Return: %s', ret))
             } else{
                 loginfo('DEBUG MODE, not insert DATA')

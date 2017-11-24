@@ -66,7 +66,21 @@ insert_error <- function(rot_error_record) {
         Values %s
         ","tlcd_nikon_rot_log_ht", 
         "tstamp, glassid, toolid, operation, product, flag, descr", 
-        rot_log_record
+        rot_error_record
+    )
+    ret <- dbGetQuery(con_psql.etl_rot, sql)
+    return (ret)
+}
+
+
+insert_error_mea <- function(rot_error_record) {
+    sql <- sprintf(
+        "
+        INSERT INTO %s(%s)
+        Values %s
+        ","tlcd_nikon_rot_log_ht", 
+        "tstamp, glassid, operation, product, flag, descr", 
+        rot_error_record
     )
     ret <- dbGetQuery(con_psql.etl_rot, sql)
     return (ret)
