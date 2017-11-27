@@ -161,7 +161,7 @@ class Base:
         if add_cols and del_cols:
             return {'ret': False, 'add': add_cols, 'del': del_cols}
         elif add_cols:
-            return {'ret': False, 'add': add_cols, 'del': del_cols}
+            return {'ret': True, 'add': add_cols, 'del': del_cols}
         elif del_cols:
             return {'ret': False, 'add': add_cols, 'del': del_cols}
         else:
@@ -185,7 +185,18 @@ class Base:
             column_state.get('del')
         ))
         if column_state.get('ret', False):
-            datas = [tuple(d.values()) for d in edc_data]
+            add_cols = column_state.get('add')
+            if len(add_cols):
+                print('Add cols: {}, remove those.'.format(
+                    len(column_state.get('add'))))
+                for d in edc_data:
+                    for c in add_cols:
+                        del d[c]
+                print('Check again: {}.'.format(self.column_state(
+                    edc=edc_data[0], schema=schemacolnames)))
+                datas = [tuple(d.values()) for d in edc_data if d]
+            else:
+                datas = [tuple(d.values()) for d in edc_data]
         print('Insert clean_edcdata Count: {}'.format(len(datas)))
         return datas
 
@@ -195,6 +206,7 @@ class Base:
 
 
 class BaseInsert:
+
     @asyncio.coroutine
     def insert(self, toolid):
         while True:
@@ -324,8 +336,10 @@ class ETL(Base, BaseInsert):
                     raise e
 
                 # Add logintime in all row.
-                insert_datas = self.clean_endtimedata(endtime_data=endtime_data)
-                print('Total interval cleandata count= {}'.format(len(insert_datas)))
+                insert_datas = self.clean_endtimedata(
+                    endtime_data=endtime_data)
+                print('Total interval cleandata count= {}'.format(
+                    len(insert_datas)))
                 try:
                     print('Save interval cleandata into index_glassout')
                     self.insert_endtimedata_main(datas=insert_datas)
@@ -404,9 +418,9 @@ class ETL(Base, BaseInsert):
                   'ROT Transform Lastendtime: {}, '
                   'Update start time: {}, '
                   'Update end time: {}.'.format(
-                psql_lastendtime_edc, psql_lastendtime_rot,
-                update_starttime, update_endtime
-            ))
+                      psql_lastendtime_edc, psql_lastendtime_rot,
+                      update_starttime, update_endtime
+                  ))
         count = 0
         while True:
             # stop if update_starttime same.
@@ -462,8 +476,8 @@ class ETL(Base, BaseInsert):
         for toolid in sorted([id.lower() for id in toolids]):
             print('Candidate {} time period '
                   'start: {}, end: {}.'.format(
-                toolid, update_starttime, update_endtime
-            ))
+                      toolid, update_starttime, update_endtime
+                  ))
             # ROT
             nikonrot_data = self.fdc_psql.get_nikonrot(
                 toolid=toolid,
