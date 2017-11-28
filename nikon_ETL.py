@@ -282,15 +282,15 @@ class ETL(Base, BaseInsert):
         row = self.get_aplastendtime(apname=apname)
         etlflow = self.check_flow(row=row)
         if etlflow:
-            print('Check row ok!')
+            print('Check etl row ok!')
 
-        # get lastendtime
+        # Get lastendtime
         ora_lastendtime = self.fdc_oracle.get_lastendtime()[0]
         psql_lastendtime = self.get_lastendtime(row=row)
         print('Lastendtime, Oracle:{}, PSQL:{}'.format(
             ora_lastendtime, psql_lastendtime))
 
-        # get toolids
+        # Get toolids
         toolids = self.dbtransfer(
             apname=apname,
             ora_lastendtime=ora_lastendtime,
