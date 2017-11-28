@@ -177,27 +177,28 @@ class Base:
 
     def clean_edcdata(self, edc_data, schemacolnames):
         datas = []
-        edc_columns = list(edc_data[0].keys())
-        column_state = self.column_state(
-            edc=edc_columns, schema=schemacolnames)
-        print('Check column status: ret={} add={} del={}'.format(
-            column_state.get('ret'), column_state.get('add'),
-            column_state.get('del')
-        ))
-        if column_state.get('ret', False):
-            add_cols = column_state.get('add')
-            if len(add_cols):
-                print('Add cols: {}, remove those.'.format(
-                    len(column_state.get('add'))))
-                for d in edc_data:
-                    for c in add_cols:
-                        del d[c]
-                print('Check again: {}.'.format(self.column_state(
-                    edc=edc_data[0], schema=schemacolnames)))
-                datas = [tuple(d.values()) for d in edc_data if d]
-            else:
-                datas = [tuple(d.values()) for d in edc_data]
-        print('Insert clean_edcdata Count: {}'.format(len(datas)))
+        if len(edc_data):
+            edc_columns = list(edc_data[0].keys())
+            column_state = self.column_state(
+                edc=edc_columns, schema=schemacolnames)
+            print('Check column status: ret={} add={} del={}'.format(
+                column_state.get('ret'), column_state.get('add'),
+                column_state.get('del')
+            ))
+            if column_state.get('ret', False):
+                add_cols = column_state.get('add')
+                if len(add_cols):
+                    print('Add cols: {}, remove those.'.format(
+                        len(column_state.get('add'))))
+                    for d in edc_data:
+                        for c in add_cols:
+                            del d[c]
+                    print('Check again: {}.'.format(self.column_state(
+                        edc=edc_data[0], schema=schemacolnames)))
+                    datas = [tuple(d.values()) for d in edc_data if d]
+                else:
+                    datas = [tuple(d.values()) for d in edc_data]
+            print('Insert clean_edcdata Count: {}'.format(len(datas)))
         return datas
 
     def clean_schemacolnames(self, schemacolnames):
