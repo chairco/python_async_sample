@@ -282,11 +282,15 @@ class ETL(Base, BaseInsert):
         row = self.get_aplastendtime(apname=apname)
         etlflow = self.check_flow(row=row)
         if etlflow:
-            ora_lastendtime = self.fdc_oracle.get_lastendtime()[0]
-            psql_lastendtime = self.get_lastendtime(row=row)
-            print('Lastendtime, Oracle:{}, PSQL:{}'.format(
-                ora_lastendtime, psql_lastendtime))
+            print('Check row ok!')
 
+        # get lastendtime
+        ora_lastendtime = self.fdc_oracle.get_lastendtime()[0]
+        psql_lastendtime = self.get_lastendtime(row=row)
+        print('Lastendtime, Oracle:{}, PSQL:{}'.format(
+            ora_lastendtime, psql_lastendtime))
+
+        # get toolids
         toolids = self.dbtransfer(
             apname=apname,
             ora_lastendtime=ora_lastendtime,
@@ -407,21 +411,24 @@ class ETL(Base, BaseInsert):
         print("Nikon ETL ROT Transform Process Start...")
         row = self.get_aplastendtime(apname=apname_rot)
         edcrow = self.get_aplastendtime(apname=apname_edc)
+        
         rotflow = self.check_flow(row=row)
-
         if rotflow:
-            psql_lastendtime_rot = self.get_lastendtime(row=row)
-            psql_lastendtime_edc = self.get_lastendtime(row=edcrow)
-            #update_starttime = datetime.strptime('2017-11-16 08:45:00', '%Y-%m-%d %H:%M:%S')
-            update_starttime = psql_lastendtime_rot
-            update_endtime = psql_lastendtime_edc
-            print('EDC Import Lastendtime: {}, '
-                  'ROT Transform Lastendtime: {}, '
-                  'Update start time: {}, '
-                  'Update end time: {}.'.format(
-                      psql_lastendtime_edc, psql_lastendtime_rot,
-                      update_starttime, update_endtime
-                  ))
+            print('Check rot row ok!')
+
+        psql_lastendtime_rot = self.get_lastendtime(row=row)
+        psql_lastendtime_edc = self.get_lastendtime(row=edcrow)
+        #update_starttime = datetime.strptime('2017-11-16 08:45:00', '%Y-%m-%d %H:%M:%S')
+        update_starttime = psql_lastendtime_rot
+        update_endtime = psql_lastendtime_edc
+        print('EDC Import Lastendtime: {}, '
+              'ROT Transform Lastendtime: {}, '
+              'Update start time: {}, '
+              'Update end time: {}.'.format(
+                  psql_lastendtime_edc, psql_lastendtime_rot,
+                  update_starttime, update_endtime
+              ))
+        
         count = 0
         while True:
             # stop if update_starttime same.
