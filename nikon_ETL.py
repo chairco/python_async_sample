@@ -258,6 +258,16 @@ class BaseInsert:
 
 class ETL(Base, BaseInsert):
     """docstring for ETL
+    Descript:
+        If want to check method has good to insert datas into index_glassout 
+        can using belw sql command to check the last insert row
+        ```
+        select * 
+        from index_glassout t
+        where t.toolid LIKE 'TLCD__01'
+        order by t.endtime 
+        desc limit 10 
+        ```
     """
 
     def __init__(self, toolid):
@@ -277,6 +287,7 @@ class ETL(Base, BaseInsert):
     @logger.patch
     def etl(self, apname, *args, **kwargs):
         """start etl edc import
+        Nikon ETL process
         """
         print('Nikon ETL Process Start...')
         row = self.get_aplastendtime(apname=apname)
@@ -322,7 +333,7 @@ class ETL(Base, BaseInsert):
     def dbtransfer(self, apname, ora_lastendtime, psql_lastendtime):
         """start to copy index_glassout table
         """
-        print('Transfer index_glassot table from Oracle to PostgresSQL')
+        print('Transfer index_glassot table from Oracle to PostgresSQL.')
         toolids = []
         # ora lastendtime new than psql lastendtime.
         if ora_lastendtime > psql_lastendtime:
@@ -362,6 +373,7 @@ class ETL(Base, BaseInsert):
     def tlcd_flow(self, toolids, apname, psql_lastendtime, ora_lastendtime):
         """start to copy tlcd table
         """
+        print('Start sequential copy tlcd table.')
         # ora lastendtime new than psql lastendtime.
         if ora_lastendtime > psql_lastendtime:
             for toolid in sorted(toolids):
@@ -407,6 +419,7 @@ class ETL(Base, BaseInsert):
     @logger.patch
     def rot(self, apname_rot, apname_edc, *args, **kwargs):
         """start etl rot, clean data in psql
+        Nikon ROT process
         """
         print("Nikon ETL ROT Transform Process Start...")
         row = self.get_aplastendtime(apname=apname_rot)
@@ -480,6 +493,9 @@ class ETL(Base, BaseInsert):
             raise e
 
     def rot_flow(self, toolids, update_starttime, update_endtime):
+        """
+        """
+        print('Start sequential copy rot tlcd table')
         # ROT Transform
         for toolid in sorted([id.lower() for id in toolids]):
             print('Candidate {} time period '
