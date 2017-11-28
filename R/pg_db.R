@@ -59,6 +59,58 @@ get_prodwithdv <- function() {
 }
 
 
+insert_rot_value <- function(rot_log_ht_record, rot_data_record) {
+    sql <- sprintf(
+        "
+        WITH insert_rot_ht AS (
+          INSERT INTO %s(%s)
+          Values
+          %s
+        RETURNING rot_id
+        ), insert_rot_data AS (
+          INSERT INTO %s(item_name, rot_rs, rot_id)
+          Values
+          %s
+        )
+        SELECT TRUE
+        ",
+        "tlcd_nikon_rot_log_ht",
+        "tstamp, glassid, toolid, operation, product, flag",
+        rot_log_ht_record,
+        "tlcd_nikon_rot_bt",
+        rot_data_record
+    )
+    ret <- dbGetQuery(con_psql.etl_rot, sql)
+    return (ret)
+}
+
+
+insert_mea_value <- function(rot_log_ht_record, rot_data_record) {
+    sql <- sprintf(
+        "
+        WITH insert_rot_ht AS (
+          INSERT INTO %s(%s)
+          Values
+          %s
+        RETURNING rot_id
+        ), insert_rot_data AS (
+          INSERT INTO %s(item_name, rot_rs, rot_id)
+          Values
+          %s
+        )
+        SELECT TRUE
+        ",
+        "tlcd_nikon_rot_log_ht",
+        "tstamp, glassid, operation, product, flag",
+        rot_log_ht_record,
+        "tlcd_nikon_rot_bt",
+        rot_data_record
+    )
+    ret <- dbGetQuery(con_psql.etl_rot, sql)
+    return (ret)
+}
+
+
 insert_error <- function(rot_error_record) {
     sql <- sprintf(
         "

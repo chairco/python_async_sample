@@ -253,7 +253,7 @@ opt_insert <- function(prodt, DV_coord, rot_cols, cleandata_ALG_x, cleandata_ALG
             
             if (DEBUG == FALSE) {
                 loginfo('Insert rot data.')
-                ret <- loginfo(insert_error(rot_error_record))
+                ret <- loginfo(insert_rot_value(rot_log_ht_record, rot_data_record))
                 loginfo(sprintf('Return: %s', ret))
             } else{
                 loginfo('DEBUG MODE, not insert DATA')
