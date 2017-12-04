@@ -89,7 +89,7 @@ def rscript_rot(r, toolid, update_starttime, update_endtime):
     rprocess = OrderedDict()
     commands = OrderedDict([
         (toolid, [
-            'RScript', r,
+            'Rscript', r,
             '-t', toolid,
             '-s', update_starttime,
             '-e', update_endtime
@@ -107,7 +107,7 @@ def rscript_mea(r, toolid, update_starttime, update_endtime):
     rprocess = OrderedDict()
     commands = OrderedDict([
         (toolid, [
-            'RScript', r,
+            'Rscript', r,
             '-s', update_starttime,
             '-e', update_endtime
         ]),
@@ -121,7 +121,7 @@ def rscript_avm(r, toolid, starttime, endtime):
     rprocess = OrderedDict()
     commands = OrderedDict([
         (toolid, [
-            'RScript', r, starttime, endtime
+            'Rscript', r, starttime, endtime
         ]),
     ])
     for cmd_name, cmd in commands.items():
@@ -168,9 +168,15 @@ class Base:
             return {'ret': True, 'add': add_cols, 'del': del_cols}
 
     def clean_endtimedata(self, endtime_data):
+        mapping = [
+            'TOOLID', 'OPERATIONID', 'PRODUCTID', 'CHAMBERID',
+            'GLASSID', 'ENDTIME', 'TSTAMP', 'RECIPEID'
+        ]
         insert_data = []
         logintime = datetime.now()
         for d in endtime_data:
+            value_order = [d[i] for i in mapping]
+            d = OrderedDict(zip(mapping, value_order))
             d.setdefault('LOGIN_TIME', logintime)
             insert_data.append(tuple(d.values()))
         return insert_data
@@ -307,7 +313,6 @@ class ETL(Base, BaseInsert):
             ora_lastendtime=ora_lastendtime,
             psql_lastendtime=psql_lastendtime
         )
-
         # Insert for loop
         try:
             self.tlcd_flow(
@@ -356,6 +361,7 @@ class ETL(Base, BaseInsert):
                     endtime_data=endtime_data)
                 print('Total interval cleandata count= {}'.format(
                     len(insert_datas)))
+
                 try:
                     print('Save interval cleandata into index_glassout')
                     self.insert_endtimedata_main(datas=insert_datas)

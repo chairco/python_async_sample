@@ -1,12 +1,13 @@
 from . import db, db_fdc, db_pg
 
+from collections import OrderedDict
 
 def dictfetchall(cursor):
     """Return all rows from a cursor as a dict
     """
     columns = [col[0] for col in cursor.description]
     return [
-        dict(zip(columns, row))
+        OrderedDict(zip(columns, row))
         for row in cursor.fetchall()
     ]
 
@@ -132,6 +133,7 @@ class FdcPGSQL:
                 'ora_lastendtime': ora_lastendtime
             }
         )
+        db_pg.commit()
 
     def delete_toolid(self, toolid, psql_lastendtime, ora_lastendtime):
         """
@@ -153,7 +155,7 @@ class FdcPGSQL:
             """,
             {'endtime_data': endtime_data}
         )
-        #db_pg.commit()
+        db_pg.commit()
 
     def save_edcdata(self, toolid, edcdata):
         """
